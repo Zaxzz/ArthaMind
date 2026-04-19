@@ -57,13 +57,13 @@ export default function RegisterPage() {
             transition={{ staggerChildren: 0.15 }}
             className="space-y-7"
           >
-            <motion.div
+            {/* <motion.div
               variants={fadeUp}
               className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-zinc-100 border text-sm"
             >
               <Sparkles size={16} />
               Create Account
-            </motion.div>
+            </motion.div> */}
 
             <motion.h1
               variants={fadeUp}

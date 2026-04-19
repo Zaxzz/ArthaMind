@@ -50,14 +50,6 @@ export default function LoginPage() {
             transition={{ staggerChildren: 0.15 }}
             className="space-y-7"
           >
-            <motion.div
-              variants={fadeUp}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-zinc-100 border text-sm"
-            >
-              <Sparkles size={16} />
-              Welcome Back
-            </motion.div>
-
             <motion.h1
               variants={fadeUp}
               className="text-5xl lg:text-6xl font-semibold tracking-tight leading-tight"
