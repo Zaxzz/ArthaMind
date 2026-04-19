@@ -1,9 +1,10 @@
-// app/login/page.jsx
 "use client";
 
+import React from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, Lock, Mail, Sparkles } from "lucide-react";
+import { supabase } from "../../utils/supabase";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 25 },
@@ -19,7 +20,24 @@ const floatAnim = {
   },
 };
 
+
+
 export default function LoginPage() {
+  const [email, setEmail] = React.useState("");
+  const [password, setPassword] = React.useState("");
+
+  async function signIn() {
+    if (!email || !password) {
+      alert("Please enter both email and password.");
+      return;
+    }
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+    console.log(data, error);
+  }
+
   return (
     <main className="min-h-screen bg-white text-zinc-900 overflow-hidden">
       {/* HEADER */}
@@ -96,6 +114,8 @@ export default function LoginPage() {
                   <input
                     type="email"
                     placeholder="Email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
                     className="w-full pl-11 pr-4 py-4 rounded-2xl bg-zinc-100 outline-none focus:ring-2 focus:ring-zinc-300"
                   />
                 </div>
@@ -109,12 +129,17 @@ export default function LoginPage() {
                   <input
                     type="password"
                     placeholder="Password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
                     className="w-full pl-11 pr-4 py-4 rounded-2xl bg-zinc-100 outline-none focus:ring-2 focus:ring-zinc-300"
                   />
                 </div>
               </div>
 
-              <button className="w-full py-4 rounded-2xl bg-zinc-900 text-white flex justify-center items-center gap-2 hover:scale-[1.02] transition">
+              <button
+                className="w-full py-4 rounded-2xl bg-zinc-900 text-white flex justify-center items-center gap-2 hover:scale-[1.02] transition cursor-pointer"
+                onClick={() => signIn()}
+              >
                 Login <ArrowRight size={18} />
               </button>
 
