@@ -1,0 +1,158 @@
+// app/register/page.jsx
+"use client";
+
+import { motion } from "framer-motion";
+import Link from "next/link";
+import {
+  ArrowLeft,
+  ArrowRight,
+  Lock,
+  Mail,
+  Sparkles,
+  User,
+} from "lucide-react";
+
+const fadeUp = {
+  hidden: { opacity: 0, y: 25 },
+  show: { opacity: 1, y: 0 },
+};
+
+const floatAnim = {
+  y: [0, -10, 0],
+  transition: {
+    duration: 4,
+    repeat: Infinity,
+    ease: "easeInOut",
+  },
+};
+
+export default function RegisterPage() {
+  return (
+    <main className="min-h-screen bg-white text-zinc-900 overflow-hidden">
+      {/* HEADER */}
+      <header className="fixed top-0 left-0 w-full z-50 bg-white/80 backdrop-blur-xl border-b border-zinc-100">
+        <div className="max-w-7xl mx-auto px-6 lg:px-20 h-20 flex items-center justify-between">
+          <Link
+            href="/"
+            className="w-11 h-11 rounded-2xl border border-zinc-200 flex items-center justify-center hover:bg-zinc-100 transition"
+          >
+            <ArrowLeft size={20} />
+          </Link>
+
+          <h1 className="text-2xl font-semibold tracking-tight">
+            Artha<span className="text-zinc-400">Mind</span>
+          </h1>
+
+          <div className="w-11" />
+        </div>
+      </header>
+
+      {/* CONTENT */}
+      <section className="min-h-screen flex items-center justify-center px-6 py-10 pt-28">
+        <div className="w-full max-w-6xl grid lg:grid-cols-2 gap-10 items-center">
+          {/* LEFT SIDE */}
+          <motion.div
+            initial="hidden"
+            animate="show"
+            transition={{ staggerChildren: 0.15 }}
+            className="space-y-7"
+          >
+            <motion.div
+              variants={fadeUp}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-zinc-100 border text-sm"
+            >
+              <Sparkles size={16} />
+              Create Account
+            </motion.div>
+
+            <motion.h1
+              variants={fadeUp}
+              className="text-5xl lg:text-6xl font-semibold tracking-tight leading-tight"
+            >
+              Daftar ke
+              <span className="block text-zinc-400">ArthaMind</span>
+            </motion.h1>
+
+            <motion.p
+              variants={fadeUp}
+              className="text-zinc-600 text-lg max-w-xl"
+            >
+              Mulai kelola keuangan UMKM dengan sistem modern, laporan otomatis,
+              dan bantuan AI Advisor.
+            </motion.p>
+
+            <motion.div variants={fadeUp}>
+              <Link
+                href="/login"
+                className="text-sm text-zinc-500 hover:text-zinc-900 transition"
+              >
+                Sudah punya akun? Login sekarang →
+              </Link>
+            </motion.div>
+          </motion.div>
+
+          {/* FORM */}
+          <motion.div animate={floatAnim}>
+            <div className="bg-white border border-zinc-200 shadow-2xl rounded-[32px] p-8 space-y-6">
+              <div>
+                <h2 className="text-2xl font-semibold">Register</h2>
+                <p className="text-zinc-500 text-sm mt-1">
+                  Isi data di bawah untuk membuat akun
+                </p>
+              </div>
+
+              <div className="space-y-4">
+                {/* Nama */}
+                <div className="relative">
+                  <User
+                    size={18}
+                    className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Nama Lengkap"
+                    className="w-full pl-11 pr-4 py-4 rounded-2xl bg-zinc-100 outline-none focus:ring-2 focus:ring-zinc-300"
+                  />
+                </div>
+
+                {/* Email */}
+                <div className="relative">
+                  <Mail
+                    size={18}
+                    className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400"
+                  />
+                  <input
+                    type="email"
+                    placeholder="Email"
+                    className="w-full pl-11 pr-4 py-4 rounded-2xl bg-zinc-100 outline-none focus:ring-2 focus:ring-zinc-300"
+                  />
+                </div>
+
+                {/* Password */}
+                <div className="relative">
+                  <Lock
+                    size={18}
+                    className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400"
+                  />
+                  <input
+                    type="password"
+                    placeholder="Password"
+                    className="w-full pl-11 pr-4 py-4 rounded-2xl bg-zinc-100 outline-none focus:ring-2 focus:ring-zinc-300"
+                  />
+                </div>
+              </div>
+
+              <button className="w-full py-4 rounded-2xl bg-zinc-900 text-white flex justify-center items-center gap-2 hover:scale-[1.02] transition">
+                Register <ArrowRight size={18} />
+              </button>
+
+              <p className="text-center text-sm text-zinc-500">
+                Dengan mendaftar, kamu setuju dengan Terms & Privacy
+              </p>
+            </div>
+          </motion.div>
+        </div>
+      </section>
+    </main>
+  );
+}

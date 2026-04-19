@@ -12,6 +12,7 @@ import {
   Wallet,
   CheckCircle2,
 } from "lucide-react";
+import Link from "next/link";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 30 },
@@ -79,9 +80,20 @@ export default function Page() {
             Artha<span className="text-zinc-400">Mind</span>
           </h1>
 
-          <button className="px-5 py-2.5 rounded-2xl bg-zinc-900 text-white hover:scale-105 transition">
-            Login
-          </button>
+          <div className="flex items-center gap-3">
+            <Link
+              href="/login"
+              className="px-5 py-2.5 rounded-2xl bg-zinc-900 text-white hover:scale-105 transition inline-block"
+            >
+              Login
+            </Link>
+            <Link
+              href="/register"
+              className="px-5 py-2.5 rounded-2xl border border-zinc-300 text-zinc-900 hover:bg-zinc-100 transition inline-block"
+            >
+              Register
+            </Link>
+          </div>
         </div>
       </header>
 
@@ -121,9 +133,12 @@ export default function Page() {
             </motion.p>
 
             <motion.div variants={fadeUp}>
-              <button className="px-7 py-4 rounded-2xl bg-zinc-900 text-white inline-flex items-center gap-2 hover:scale-105 transition">
+              <Link
+                href="/login"
+                className="px-7 py-4 rounded-2xl bg-zinc-900 text-white inline-flex items-center gap-2 hover:scale-105 transition"
+              >
                 Login Sekarang <ArrowRight size={18} />
-              </button>
+              </Link>
             </motion.div>
 
             <motion.div
@@ -295,9 +310,12 @@ export default function Page() {
             Mulai kelola bisnis lebih rapi, cepat, dan cerdas bersama ArthaMind.
           </p>
 
-          <button className="mt-8 px-7 py-4 rounded-2xl bg-zinc-900 text-white inline-flex items-center gap-2 hover:scale-105 transition">
+          <Link
+            href="/login"
+            className="mt-8 px-7 py-4 rounded-2xl bg-zinc-900 text-white inline-flex items-center gap-2 hover:scale-105 transition"
+          >
             Login Sekarang <ArrowRight size={18} />
-          </button>
+          </Link>
         </div>
       </section>
 
