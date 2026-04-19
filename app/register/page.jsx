@@ -1,6 +1,5 @@
-// app/register/page.jsx
 "use client";
-
+import React from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import {
@@ -11,6 +10,7 @@ import {
   Sparkles,
   User,
 } from "lucide-react";
+import { supabase } from "../../utils/supabase";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 25 },
@@ -26,7 +26,30 @@ const floatAnim = {
   },
 };
 
-export default function RegisterPage() {
+export default function Register() {
+  const [email, setEmail] = React.useState("");
+  const [namaPemilik, setNamaPemilik] = React.useState("");
+  const [password, setPassword] = React.useState("");
+
+  async function signUp() {
+    if (!email || !password) {
+      alert("Please enter both email and password.");
+      return;
+    }
+
+    const { data, error } = await supabase.auth.signUp({
+      email: email,
+      password: password,
+      options: {
+        data: {
+          nama_pemilik: namaPemilik,
+        },
+      },
+    });
+
+    console.log(data, error);
+  }
+
   return (
     <main className="min-h-screen bg-white text-zinc-900 overflow-hidden">
       {/* HEADER */}
@@ -111,6 +134,8 @@ export default function RegisterPage() {
                   <input
                     type="text"
                     placeholder="Nama Lengkap"
+                    value={namaPemilik}
+                    onChange={(e) => setNamaPemilik(e.target.value)}
                     className="w-full pl-11 pr-4 py-4 rounded-2xl bg-zinc-100 outline-none focus:ring-2 focus:ring-zinc-300"
                   />
                 </div>
@@ -124,6 +149,8 @@ export default function RegisterPage() {
                   <input
                     type="email"
                     placeholder="Email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
                     className="w-full pl-11 pr-4 py-4 rounded-2xl bg-zinc-100 outline-none focus:ring-2 focus:ring-zinc-300"
                   />
                 </div>
@@ -137,12 +164,17 @@ export default function RegisterPage() {
                   <input
                     type="password"
                     placeholder="Password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
                     className="w-full pl-11 pr-4 py-4 rounded-2xl bg-zinc-100 outline-none focus:ring-2 focus:ring-zinc-300"
                   />
                 </div>
               </div>
 
-              <button className="w-full py-4 rounded-2xl bg-zinc-900 text-white flex justify-center items-center gap-2 hover:scale-[1.02] transition">
+              <button
+                className="w-full py-4 rounded-2xl bg-zinc-900 text-white flex justify-center items-center gap-2 hover:scale-[1.02] transition cursor-pointer"
+                onClick={() => signUp()}
+              >
                 Register <ArrowRight size={18} />
               </button>
 
