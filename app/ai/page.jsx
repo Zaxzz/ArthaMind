@@ -42,7 +42,42 @@ export default function Page() {
   const bottomRef = useRef(null);
 
   useEffect(() => {
-    getFinance();
+    let mounted = true;
+
+    async function loadFinance() {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!mounted || !user) return;
+
+      const { data } = await supabase
+        .from("transaksi")
+        .select("*")
+        .eq("user_id", user.id);
+
+      let income = 0;
+      let expense = 0;
+
+      data?.forEach((item) => {
+        if (item.jenis === "pemasukan") income += Number(item.jumlah);
+        if (item.jenis === "pengeluaran") expense += Number(item.jumlah);
+      });
+
+      if (!mounted) return;
+
+      setFinance({
+        income,
+        expense,
+        saldo: income - expense,
+      });
+    }
+
+    loadFinance();
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -50,33 +85,6 @@ export default function Page() {
       behavior: "smooth",
     });
   }, [messages, loading]);
-
-  const getFinance = async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) return;
-
-    const { data } = await supabase
-      .from("transaksi")
-      .select("*")
-      .eq("user_id", user.id);
-
-    let income = 0;
-    let expense = 0;
-
-    data?.forEach((item) => {
-      if (item.jenis === "pemasukan") income += Number(item.jumlah);
-      if (item.jenis === "pengeluaran") expense += Number(item.jumlah);
-    });
-
-    setFinance({
-      income,
-      expense,
-      saldo: income - expense,
-    });
-  };
 
   const sendMessage = async () => {
     if (!message.trim()) return;
@@ -112,7 +120,7 @@ export default function Page() {
           text: data.reply,
         },
       ]);
-    } catch (error) {
+    } catch {
       setMessages((prev) => [
         ...prev,
         {
@@ -139,7 +147,7 @@ export default function Page() {
         <div className="max-w-7xl mx-auto px-6 lg:px-20 h-20 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Link
-              href="/"
+              href="/dashboard"
               className="w-11 h-11 rounded-2xl border border-zinc-200 flex items-center justify-center hover:bg-zinc-100 transition"
             >
               <ArrowLeft size={18} />
