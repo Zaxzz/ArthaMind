@@ -362,6 +362,12 @@ export default function BukuKasPage() {
               Buku Kas
             </Link>
             <Link
+              href="/hutang-piutang"
+              className="hidden md:inline-block px-4 py-2 rounded-2xl border border-zinc-300 text-sm hover:bg-zinc-100 transition"
+            >
+              Hutang & Piutang
+            </Link>
+            <Link
               href="/transaksi"
               className="px-4 py-2 rounded-2xl border border-zinc-300 text-sm hover:bg-zinc-100 transition inline-flex items-center gap-2"
             >

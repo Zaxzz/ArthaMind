@@ -210,6 +210,12 @@ export default function DashboardPage() {
               Buku Kas
             </Link>
             <Link
+              href="/hutang-piutang"
+              className="hidden md:inline-block px-4 py-2 rounded-2xl border border-zinc-300 text-sm hover:bg-zinc-100 transition"
+            >
+              Hutang & Piutang
+            </Link>
+            <Link
               href="/transaksi"
               className="px-4 py-2 rounded-2xl border border-zinc-300 text-sm hover:bg-zinc-100 transition inline-flex items-center gap-2"
             >
@@ -271,6 +277,7 @@ export default function DashboardPage() {
                   <Bot size={18} />
                   Tanya AI Advisor
                 </Link>
+
                 <Link
                   href="/laporan"
                   className="px-5 py-3 rounded-2xl bg-emerald-500 text-white hover:bg-emerald-600 transition inline-flex items-center gap-2"
