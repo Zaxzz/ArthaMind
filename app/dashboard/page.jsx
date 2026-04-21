@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { FileText, FileSpreadsheet, Receipt } from "lucide-react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -215,6 +216,14 @@ export default function DashboardPage() {
               <PlusCircle size={16} />
               Transaksi
             </Link>
+
+            <Link
+              href="/laporan"
+              className="hidden md:inline-flex px-4 py-2 rounded-2xl border border-zinc-300 text-sm hover:bg-zinc-100 transition items-center gap-2"
+            >
+              <Receipt size={16} />
+              Laporan
+            </Link>
             <button
               onClick={handleLogout}
               className="px-4 py-2 rounded-2xl border border-zinc-300 text-sm hover:bg-zinc-100 transition inline-flex items-center gap-2"
@@ -261,6 +270,13 @@ export default function DashboardPage() {
                 >
                   <Bot size={18} />
                   Tanya AI Advisor
+                </Link>
+                <Link
+                  href="/laporan"
+                  className="px-5 py-3 rounded-2xl bg-emerald-500 text-white hover:bg-emerald-600 transition inline-flex items-center gap-2"
+                >
+                  <FileText size={18} />
+                  Laporan SAK EMKM
                 </Link>
               </div>
             </motion.div>
@@ -309,7 +325,9 @@ export default function DashboardPage() {
               >
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
-                    <h3 className="text-xl font-semibold">Grafik Cashflow 7 Hari</h3>
+                    <h3 className="text-xl font-semibold">
+                      Grafik Cashflow 7 Hari
+                    </h3>
                     <p className="text-sm text-zinc-500">
                       Batang hijau = pemasukan, merah = pengeluaran
                     </p>
@@ -439,7 +457,8 @@ export default function DashboardPage() {
                             {getCategoryLabel(transaction.kategori)}
                           </p>
                           <p className="text-sm text-zinc-500">
-                            {dateKey} • {transaction.deskripsi || "Tanpa deskripsi"}
+                            {dateKey} •{" "}
+                            {transaction.deskripsi || "Tanpa deskripsi"}
                           </p>
                         </div>
 
