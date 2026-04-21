@@ -3,16 +3,14 @@
 import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import {
-  Bot,
   Send,
   Sparkles,
-  ArrowLeft,
   Wallet,
   TrendingUp,
   AlertCircle,
 } from "lucide-react";
-import Link from "next/link";
 import { supabase } from "@/utils/supabase";
+import Header from "../../component/Header";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 25 },
@@ -179,28 +177,7 @@ export default function Page() {
 
   return (
     <main className="min-h-screen bg-white text-zinc-900 overflow-hidden">
-      {/* NAVBAR */}
-      <header className="fixed top-0 left-0 w-full z-50 bg-white/80 backdrop-blur-xl border-b border-zinc-100">
-        <div className="max-w-7xl mx-auto px-6 lg:px-20 h-20 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Link
-              href="/dashboard"
-              className="w-11 h-11 rounded-2xl border border-zinc-200 flex items-center justify-center hover:bg-zinc-100 transition"
-            >
-              <ArrowLeft size={18} />
-            </Link>
-
-            <h1 className="text-2xl font-semibold tracking-tight">
-              Artha<span className="text-zinc-400">Mind</span>
-            </h1>
-          </div>
-
-          <div className="px-5 py-2.5 rounded-2xl bg-zinc-900 text-white flex items-center gap-2">
-            <Bot size={18} />
-            AI Advisor
-          </div>
-        </div>
-      </header>
+      <Header />
 
       {/* CONTENT */}
       <section className="pt-28 px-6 lg:px-20 pb-10">

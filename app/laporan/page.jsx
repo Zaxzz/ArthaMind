@@ -1,20 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import { motion } from "framer-motion";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
-import {
-  ArrowLeft,
-  FileSpreadsheet,
-  FileText,
-  Sparkles,
-  TrendingUp,
-  ArrowRight,
-} from "lucide-react";
+import { FileSpreadsheet, FileText, Sparkles, TrendingUp } from "lucide-react";
 import { supabase } from "@/utils/supabase";
 import Header from "../../component/Header";
 
@@ -24,7 +16,12 @@ const fadeUp = {
 };
 
 export default function Page() {
-  const [loading, setLoading] = useState(true);
+  // loading transaksi terpisah
+  const [loadingData, setLoadingData] = useState(true);
+
+  // loading AI terpisah
+  const [loadingAI, setLoadingAI] = useState(true);
+
   const [transactions, setTransactions] = useState([]);
   const [aiSummary, setAiSummary] = useState("Memuat analisis AI...");
 
@@ -36,6 +33,9 @@ export default function Page() {
 
       if (!user) return;
 
+      // =========================
+      // LOAD TRANSAKSI
+      // =========================
       const { data } = await supabase
         .from("transaksi")
         .select("*")
@@ -43,9 +43,12 @@ export default function Page() {
         .order("created_at", { ascending: false });
 
       setTransactions(data || []);
+      setLoadingData(false);
 
-      // ambil AI Summary
-      const res = await fetch("/api/ai", {
+      // =========================
+      // LOAD AI (jalan terpisah)
+      // =========================
+      fetch("/api/ai", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -54,15 +57,21 @@ export default function Page() {
           userId: user.id,
           mode: "report",
         }),
-      });
-
-      const result = await res.json();
-
-      if (result.success) {
-        setAiSummary(result.reply);
-      }
-
-      setLoading(false);
+      })
+        .then((res) => res.json())
+        .then((result) => {
+          if (result.success) {
+            setAiSummary(result.reply);
+          } else {
+            setAiSummary("AI gagal memberi analisis.");
+          }
+        })
+        .catch(() => {
+          setAiSummary("Terjadi kesalahan AI.");
+        })
+        .finally(() => {
+          setLoadingAI(false);
+        });
     }
 
     loadData();
@@ -143,6 +152,7 @@ export default function Page() {
   return (
     <main className="min-h-screen bg-white text-zinc-900">
       <Header />
+
       <section className="pt-28 px-6 lg:px-20 pb-10">
         <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-8 items-center">
           <motion.div
@@ -211,7 +221,7 @@ export default function Page() {
           </div>
         </div>
 
-        {/* AI BOX */}
+        {/* AI */}
         <div className="max-w-7xl mx-auto mt-8">
           <div className="rounded-[32px] bg-zinc-900 text-white p-8 shadow-2xl">
             <div className="flex items-center gap-3 mb-4">
@@ -220,44 +230,68 @@ export default function Page() {
             </div>
 
             <p className="text-zinc-300 leading-relaxed">
-              {loading ? "Memuat..." : aiSummary}
+              {loadingAI ? "Memuat analisis AI..." : aiSummary}
             </p>
           </div>
         </div>
       </section>
 
+      {/* TRANSAKSI */}
       <section className="px-6 lg:px-20 pb-20">
-        <div className="max-w-7xl mx-auto rounded-[32px] border border-zinc-200 bg-white shadow-xl overflow-hidden">
-          <div className="p-6 border-b border-zinc-100 flex items-center justify-between">
-            <h2 className="text-xl font-semibold">Riwayat Transaksi</h2>
+        <div className="max-w-7xl mx-auto rounded-[32px] border border-zinc-200 bg-white shadow-xl p-6">
+          <div className="flex items-center justify-between gap-3">
+            <h3 className="text-xl font-semibold">Riwayat Transaksi</h3>
+
+            <span className="text-sm text-zinc-500">
+              {transactions.length} transaksi
+            </span>
           </div>
 
-          {loading ? (
-            <div className="p-8 text-zinc-500">Memuat transaksi...</div>
-          ) : (
-            <div className="divide-y">
-              {transactions.map((item, i) => (
-                <div key={i} className="p-5 flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">{item.kategori}</p>
-                    <p className="text-sm text-zinc-500">
-                      {item.created_at?.slice(0, 10)}
+          <div className="mt-5 space-y-3">
+            {loadingData ? (
+              <div className="rounded-2xl border border-zinc-200 p-6 text-zinc-500">
+                Memuat transaksi...
+              </div>
+            ) : transactions.length === 0 ? (
+              <div className="rounded-2xl border border-zinc-200 p-6 text-zinc-500">
+                Belum ada transaksi.
+              </div>
+            ) : (
+              transactions.map((item, index) => {
+                const jenis = String(item.jenis || "").toLowerCase();
+                const amount = Number(item.jumlah || 0);
+                const dateKey = item.created_at?.slice(0, 10) || "-";
+
+                return (
+                  <div
+                    key={item.id || index}
+                    className="p-4 rounded-2xl border border-zinc-200 flex flex-wrap items-center justify-between gap-3 hover:bg-zinc-50 transition"
+                  >
+                    <div>
+                      <p className="font-medium">
+                        {item.kategori || "Tanpa Kategori"}
+                      </p>
+
+                      <p className="text-sm text-zinc-500">
+                        {dateKey} • {item.deskripsi || "Tanpa deskripsi"}
+                      </p>
+                    </div>
+
+                    <p
+                      className={`font-semibold ${
+                        jenis === "pemasukan"
+                          ? "text-emerald-600"
+                          : "text-rose-600"
+                      }`}
+                    >
+                      {jenis === "pemasukan" ? "+" : "-"}Rp{" "}
+                      {amount.toLocaleString("id-ID")}
                     </p>
                   </div>
-
-                  <p
-                    className={`font-semibold ${
-                      item.jenis === "pemasukan"
-                        ? "text-emerald-600"
-                        : "text-rose-600"
-                    }`}
-                  >
-                    Rp{Number(item.jumlah).toLocaleString("id-ID")}
-                  </p>
-                </div>
-              ))}
-            </div>
-          )}
+                );
+              })
+            )}
+          </div>
         </div>
       </section>
     </main>
