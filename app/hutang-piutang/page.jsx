@@ -12,7 +12,6 @@ import {
   LogOut,
   PlusCircle,
   Trash2,
-  Wallet,
 } from "lucide-react";
 import { supabase } from "@/utils/supabase";
 import { formatRupiah } from "@/utils/transactionUtils";
@@ -591,19 +590,24 @@ export default function HutangPiutangPage() {
                 className="w-full px-4 py-3 rounded-2xl border border-zinc-200 outline-none"
               />
 
-              <input
-                type="number"
-                min="0"
-                value={form.nominal}
-                onChange={(event) =>
-                  setForm((previous) => ({
-                    ...previous,
-                    nominal: event.target.value,
-                  }))
-                }
-                placeholder="Nominal"
-                className="w-full px-4 py-3 rounded-2xl border border-zinc-200 outline-none"
-              />
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 text-sm font-medium">
+                  Rp
+                </span>
+                <input
+                  type="number"
+                  min="0"
+                  value={form.nominal}
+                  onChange={(event) =>
+                    setForm((previous) => ({
+                      ...previous,
+                      nominal: event.target.value,
+                    }))
+                  }
+                  placeholder="0"
+                  className="w-full pl-12 pr-4 py-3 rounded-2xl border border-zinc-200 outline-none"
+                />
+              </div>
 
               <input
                 type="date"
