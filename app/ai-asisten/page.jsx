@@ -2,17 +2,16 @@
 
 import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
+import { useRouter } from "next/navigation";
 import {
-  Bot,
   Send,
   Sparkles,
-  ArrowLeft,
   Wallet,
   TrendingUp,
   AlertCircle,
 } from "lucide-react";
-import Link from "next/link";
 import { createClient } from "@supabase/supabase-js";
+import AppShellHeader from "@/app/components/AppShellHeader";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 25 },
@@ -25,6 +24,7 @@ const supabase = createClient(
 );
 
 export default function Page() {
+  const router = useRouter();
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState([
     {
@@ -140,30 +140,14 @@ export default function Page() {
     "Apakah aman ambil pinjaman?",
   ];
 
+  async function handleLogout() {
+    await supabase.auth.signOut();
+    router.replace("/login");
+  }
+
   return (
-    <main className="min-h-screen bg-white text-zinc-900 overflow-hidden">
-      {/* NAVBAR */}
-      <header className="fixed top-0 left-0 w-full z-50 bg-white/80 backdrop-blur-xl border-b border-zinc-100">
-        <div className="max-w-7xl mx-auto px-6 lg:px-20 h-20 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Link
-              href="/dashboard"
-              className="w-11 h-11 rounded-2xl border border-zinc-200 flex items-center justify-center hover:bg-zinc-100 transition"
-            >
-              <ArrowLeft size={18} />
-            </Link>
-
-            <h1 className="text-2xl font-semibold tracking-tight">
-              Artha<span className="text-zinc-400">Mind</span>
-            </h1>
-          </div>
-
-          <div className="px-5 py-2.5 rounded-2xl bg-zinc-900 text-white flex items-center gap-2">
-            <Bot size={18} />
-            AI Advisor
-          </div>
-        </div>
-      </header>
+    <main className="min-h-screen bg-white text-zinc-900 overflow-x-hidden">
+      <AppShellHeader currentPath="/ai-asisten" onLogout={handleLogout} />
 
       {/* CONTENT */}
       <section className="pt-28 px-6 lg:px-20 pb-10">
@@ -263,7 +247,7 @@ export default function Page() {
           <motion.div
             initial={{ opacity: 0, y: 25 }}
             animate={{ opacity: 1, y: 0 }}
-            className="lg:col-span-2 rounded-[32px] border border-zinc-200 bg-white shadow-2xl flex flex-col h-[78vh]"
+            className="lg:col-span-2 lg:sticky lg:top-28 lg:self-start rounded-[32px] border border-zinc-200 bg-white shadow-2xl flex flex-col h-[78vh]"
           >
             {/* TOP */}
             <div className="p-6 border-b border-zinc-100 flex items-center justify-between">

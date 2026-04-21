@@ -3,14 +3,13 @@ import React from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import {
-  ArrowLeft,
   ArrowRight,
   Lock,
   Mail,
-  Sparkles,
   User,
 } from "lucide-react";
 import { supabase } from "../../utils/supabase";
+import AppShellHeader from "@/app/components/AppShellHeader";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 25 },
@@ -52,23 +51,7 @@ export default function Register() {
 
   return (
     <main className="min-h-screen bg-white text-zinc-900 overflow-hidden">
-      {/* HEADER */}
-      <header className="fixed top-0 left-0 w-full z-50 bg-white/80 backdrop-blur-xl border-b border-zinc-100">
-        <div className="max-w-7xl mx-auto px-6 lg:px-20 h-20 flex items-center justify-between">
-          <Link
-            href="/"
-            className="w-11 h-11 rounded-2xl border border-zinc-200 flex items-center justify-center hover:bg-zinc-100 transition"
-          >
-            <ArrowLeft size={20} />
-          </Link>
-
-          <h1 className="text-2xl font-semibold tracking-tight">
-            Artha<span className="text-zinc-400">Mind</span>
-          </h1>
-
-          <div className="w-11" />
-        </div>
-      </header>
+      <AppShellHeader currentPath="/register" />
 
       {/* CONTENT */}
       <section className="min-h-screen flex items-center justify-center px-6 py-10 pt-28">

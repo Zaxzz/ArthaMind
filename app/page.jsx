@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { supabaseClient } from "@/utils/supabase";
 import {
   ArrowRight,
   BarChart3,
@@ -13,6 +14,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import Link from "next/link";
+import React from "react";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 30 },
@@ -71,6 +73,26 @@ const features = [
 ];
 
 export default function Page() {
+  const [isLogin, setIsLogin] = React.useState(false);
+
+  React.useEffect(() => {
+    async function checkSession() {
+      const {
+        data: { user },
+        error,
+      } = await supabaseClient.auth.getUser();
+
+      // 5. Jika data user berhasil diambil (tidak null), set status login ke true.
+      if (user) {
+        setIsLogin(true);
+      }
+
+      console.log("User session:", user);
+    }
+
+    checkSession();
+  }, []);
+
   return (
     <main className="bg-white text-zinc-900 overflow-hidden">
       {/* NAVBAR */}
@@ -81,18 +103,29 @@ export default function Page() {
           </h1>
 
           <div className="flex items-center gap-3">
-            <Link
-              href="/login"
-              className="px-5 py-2.5 rounded-2xl bg-zinc-900 text-white hover:scale-105 transition inline-block"
-            >
-              Login
-            </Link>
-            <Link
-              href="/register"
-              className="px-5 py-2.5 rounded-2xl border border-zinc-300 text-zinc-900 hover:bg-zinc-100 transition inline-block"
-            >
-              Register
-            </Link>
+            {isLogin ? (
+              <Link
+                href="/dashboard"
+                className="px-5 py-2.5 rounded-2xl bg-zinc-900 text-white hover:scale-105 transition inline-block"
+              >
+                Dashboard
+              </Link>
+            ) : (
+              <>
+                <Link
+                  href="/login"
+                  className="px-5 py-2.5 rounded-2xl bg-zinc-900 text-white hover:scale-105 transition inline-block"
+                >
+                  Login
+                </Link>
+                <Link
+                  href="/register"
+                  className="px-5 py-2.5 rounded-2xl border border-zinc-300 text-zinc-900 hover:bg-zinc-100 transition inline-block"
+                >
+                  Register
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </header>
@@ -107,7 +140,6 @@ export default function Page() {
             transition={{ staggerChildren: 0.15 }}
             className="space-y-8"
           >
-          
             <motion.h1
               variants={fadeUp}
               className="text-5xl lg:text-7xl font-semibold tracking-tight leading-tight"

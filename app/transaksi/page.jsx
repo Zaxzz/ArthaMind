@@ -2,18 +2,17 @@
 
 import { useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
-  ArrowLeft,
   CheckCircle2,
   Loader2,
   Mic,
   ScanLine,
   Square,
-  Wallet,
 } from "lucide-react";
 import Tesseract from "tesseract.js";
-import { supabase } from "@/utils/supabase";
+import { supabaseClient } from "@/utils/supabase";
+import AppShellHeader from "@/app/components/AppShellHeader";
 import {
   TRANSACTION_CATEGORIES,
   getCategoriesByJenis,
@@ -66,7 +65,7 @@ async function insertManualTransaction(payload) {
   let lastError = null;
 
   for (const candidate of candidates) {
-    const { error } = await supabase.from("transaksi").insert(candidate);
+    const { error } = await supabaseClient.from("transaksi").insert(candidate);
 
     if (!error) return;
 
@@ -80,6 +79,7 @@ async function insertManualTransaction(payload) {
 }
 
 export default function TransactionInputPage() {
+  const router = useRouter();
   const [method, setMethod] = useState("manual");
   const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(false);
@@ -130,7 +130,7 @@ export default function TransactionInputPage() {
     try {
       const {
         data: { user },
-      } = await supabase.auth.getUser();
+      } = await supabaseClient.auth.getUser();
       console.log("Current user:", user);
 
       if (!user) {
@@ -171,7 +171,7 @@ export default function TransactionInputPage() {
     try {
       const {
         data: { user },
-      } = await supabase.auth.getUser();
+      } = await supabaseClient.auth.getUser();
 
       if (!user) {
         throw new Error("User belum login.");
@@ -273,29 +273,14 @@ export default function TransactionInputPage() {
     setListening(false);
   };
 
+  async function handleLogout() {
+    await supabaseClient.auth.signOut();
+    router.replace("/login");
+  }
+
   return (
-    <main className="min-h-screen bg-white text-zinc-900 overflow-hidden">
-      <header className="fixed top-0 left-0 w-full z-50 bg-white/80 backdrop-blur-xl border-b border-zinc-100">
-        <div className="max-w-7xl mx-auto px-6 lg:px-20 h-20 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Link
-              href="/dashboard"
-              className="w-11 h-11 rounded-2xl border border-zinc-200 flex items-center justify-center hover:bg-zinc-100 transition"
-            >
-              <ArrowLeft size={18} />
-            </Link>
-
-            <h1 className="text-2xl font-semibold tracking-tight">
-              Artha<span className="text-zinc-400">Mind</span>
-            </h1>
-          </div>
-
-          <div className="px-5 py-2.5 rounded-2xl bg-zinc-900 text-white flex items-center gap-2">
-            <Wallet size={18} />
-            Input Transaksi
-          </div>
-        </div>
-      </header>
+    <main className="min-h-screen bg-white text-zinc-900 overflow-x-hidden">
+      <AppShellHeader currentPath="/transaksi" onLogout={handleLogout} />
 
       <section className="pt-28 px-6 lg:px-20 pb-10">
         <div className="max-w-7xl mx-auto grid lg:grid-cols-3 gap-8">
@@ -371,7 +356,7 @@ export default function TransactionInputPage() {
           <motion.div
             initial={{ opacity: 0, y: 25 }}
             animate={{ opacity: 1, y: 0 }}
-            className="lg:col-span-2 rounded-[32px]  border border-zinc-200 bg-white shadow-2xl p-6 md:p-8"
+            className="lg:col-span-2 lg:sticky lg:top-28 lg:self-start rounded-[32px] border border-zinc-200 bg-white shadow-2xl p-6 md:p-8"
           >
             {method === "manual" && (
               <div className="space-y-4">

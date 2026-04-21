@@ -10,11 +10,10 @@ import {
   Bot,
   CalendarDays,
   HandCoins,
-  LogOut,
-  PlusCircle,
   Wallet,
 } from "lucide-react";
-import { supabase } from "@/utils/supabase";
+import { supabaseClient } from "@/utils/supabase";
+import AppShellHeader from "@/app/components/AppShellHeader";
 import {
   formatRupiah,
   getCategoryLabel,
@@ -62,7 +61,7 @@ export default function DashboardPage() {
         const {
           data: { user },
           error: userError,
-        } = await supabase.auth.getUser();
+        } = await supabaseClient.auth.getUser();
 
         if (userError) throw userError;
         if (!user) {
@@ -78,7 +77,7 @@ export default function DashboardPage() {
           );
         }
 
-        const { data, error: transactionError } = await supabase
+        const { data, error: transactionError } = await supabaseClient
           .from("transaksi")
           .select("*")
           .eq("user_id", user.id);
@@ -183,48 +182,13 @@ export default function DashboardPage() {
   );
 
   async function handleLogout() {
-    await supabase.auth.signOut();
+    await supabaseClient.auth.signOut();
     router.replace("/login");
   }
 
   return (
     <main className="min-h-screen bg-white text-zinc-900 overflow-hidden">
-      <header className="fixed top-0 left-0 w-full z-50 bg-white/80 backdrop-blur-xl border-b border-zinc-100">
-        <div className="max-w-7xl mx-auto px-6 lg:px-20 h-20 flex items-center justify-between gap-4">
-          <h1 className="text-2xl font-semibold tracking-tight">
-            Artha<span className="text-zinc-400">Mind</span>
-          </h1>
-
-          <div className="flex items-center gap-2">
-            <Link
-              href="/dashboard"
-              className="hidden md:inline-block px-4 py-2 rounded-2xl bg-zinc-900 text-white text-sm"
-            >
-              Dashboard
-            </Link>
-            <Link
-              href="/buku-kas"
-              className="hidden md:inline-block px-4 py-2 rounded-2xl border border-zinc-300 text-sm hover:bg-zinc-100 transition"
-            >
-              Buku Kas
-            </Link>
-            <Link
-              href="/transaksi"
-              className="px-4 py-2 rounded-2xl border border-zinc-300 text-sm hover:bg-zinc-100 transition inline-flex items-center gap-2"
-            >
-              <PlusCircle size={16} />
-              Transaksi
-            </Link>
-            <button
-              onClick={handleLogout}
-              className="px-4 py-2 rounded-2xl border border-zinc-300 text-sm hover:bg-zinc-100 transition inline-flex items-center gap-2"
-            >
-              <LogOut size={16} />
-              Keluar
-            </button>
-          </div>
-        </div>
-      </header>
+      <AppShellHeader currentPath="/dashboard" onLogout={handleLogout} />
 
       <section className="pt-28 px-6 lg:px-20 pb-10">
         <div className="max-w-7xl mx-auto space-y-8">
