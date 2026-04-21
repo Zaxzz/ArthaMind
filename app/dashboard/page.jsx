@@ -25,6 +25,7 @@ import {
   sortTransactionsByDateDesc,
   toDateKey,
 } from "@/utils/transactionUtils";
+import Header from "../../component/Header";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 25 },
@@ -190,50 +191,7 @@ export default function DashboardPage() {
 
   return (
     <main className="min-h-screen bg-white text-zinc-900 overflow-hidden">
-      <header className="fixed top-0 left-0 w-full z-50 bg-white/80 backdrop-blur-xl border-b border-zinc-100">
-        <div className="max-w-7xl mx-auto px-6 lg:px-20 h-20 flex items-center justify-between gap-4">
-          <h1 className="text-2xl font-semibold tracking-tight">
-            Artha<span className="text-zinc-400">Mind</span>
-          </h1>
-
-          <div className="flex items-center gap-2">
-            <Link
-              href="/dashboard"
-              className="hidden md:inline-block px-4 py-2 rounded-2xl bg-zinc-900 text-white text-sm"
-            >
-              Dashboard
-            </Link>
-            <Link
-              href="/buku-kas"
-              className="hidden md:inline-block px-4 py-2 rounded-2xl border border-zinc-300 text-sm hover:bg-zinc-100 transition"
-            >
-              Buku Kas
-            </Link>
-            <Link
-              href="/transaksi"
-              className="px-4 py-2 rounded-2xl border border-zinc-300 text-sm hover:bg-zinc-100 transition inline-flex items-center gap-2"
-            >
-              <PlusCircle size={16} />
-              Transaksi
-            </Link>
-
-            <Link
-              href="/laporan"
-              className="hidden md:inline-flex px-4 py-2 rounded-2xl border border-zinc-300 text-sm hover:bg-zinc-100 transition items-center gap-2"
-            >
-              <Receipt size={16} />
-              Laporan
-            </Link>
-            <button
-              onClick={handleLogout}
-              className="px-4 py-2 rounded-2xl border border-zinc-300 text-sm hover:bg-zinc-100 transition inline-flex items-center gap-2"
-            >
-              <LogOut size={16} />
-              Keluar
-            </button>
-          </div>
-        </div>
-      </header>
+      <Header />
 
       <section className="pt-28 px-6 lg:px-20 pb-10">
         <div className="max-w-7xl mx-auto space-y-8">

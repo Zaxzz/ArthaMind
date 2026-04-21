@@ -10,6 +10,7 @@ import {
   Filter,
   LogOut,
   PlusCircle,
+  Receipt,
   Save,
   Search,
   Trash2,
@@ -31,6 +32,7 @@ import {
   normalizeJenis,
   sortTransactionsByDateDesc,
 } from "@/utils/transactionUtils";
+import Header from "../../component/Header";
 
 const COLUMN_ERROR_PATTERN =
   /column|schema cache|does not exist|Could not find the '.*' column/i;
@@ -342,42 +344,7 @@ export default function BukuKasPage() {
 
   return (
     <main className="min-h-screen bg-white text-zinc-900 overflow-hidden">
-      <header className="fixed top-0 left-0 w-full z-50 bg-white/80 backdrop-blur-xl border-b border-zinc-100">
-        <div className="max-w-7xl mx-auto px-6 lg:px-20 h-20 flex items-center justify-between gap-3">
-          <h1 className="text-2xl font-semibold tracking-tight">
-            Artha<span className="text-zinc-400">Mind</span>
-          </h1>
-
-          <div className="flex items-center gap-2">
-            <Link
-              href="/dashboard"
-              className="hidden md:inline-block px-4 py-2 rounded-2xl border border-zinc-300 text-sm hover:bg-zinc-100 transition"
-            >
-              Dashboard
-            </Link>
-            <Link
-              href="/buku-kas"
-              className="hidden md:inline-block px-4 py-2 rounded-2xl bg-zinc-900 text-white text-sm"
-            >
-              Buku Kas
-            </Link>
-            <Link
-              href="/transaksi"
-              className="px-4 py-2 rounded-2xl border border-zinc-300 text-sm hover:bg-zinc-100 transition inline-flex items-center gap-2"
-            >
-              <PlusCircle size={16} />
-              Tambah
-            </Link>
-            <button
-              onClick={handleLogout}
-              className="px-4 py-2 rounded-2xl border border-zinc-300 text-sm hover:bg-zinc-100 transition inline-flex items-center gap-2"
-            >
-              <LogOut size={16} />
-              Keluar
-            </button>
-          </div>
-        </div>
-      </header>
+      <Header />
 
       <section className="pt-28 px-6 lg:px-20 pb-12">
         <div className="max-w-7xl mx-auto space-y-6">
@@ -576,10 +543,9 @@ export default function BukuKasPage() {
                             }`}
                           >
                             {jenis === "pemasukan" ? "+" : "-"}
-                            {formatRupiah(getTransactionAmount(transaction)).replace(
-                              "Rp",
-                              "Rp ",
-                            )}
+                            {formatRupiah(
+                              getTransactionAmount(transaction),
+                            ).replace("Rp", "Rp ")}
                           </td>
                           <td className="py-4 pr-3 text-zinc-600 max-w-[280px]">
                             <p className="truncate">

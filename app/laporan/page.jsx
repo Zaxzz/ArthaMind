@@ -1,5 +1,3 @@
-// app/laporan/page.jsx
-
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -18,6 +16,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { supabase } from "@/utils/supabase";
+import Header from "../../component/Header";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 25 },
@@ -143,28 +142,7 @@ export default function Page() {
 
   return (
     <main className="min-h-screen bg-white text-zinc-900">
-      <header className="fixed top-0 left-0 w-full z-50 bg-white/80 backdrop-blur-xl border-b border-zinc-100">
-        <div className="max-w-7xl mx-auto px-6 lg:px-20 h-20 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Link
-              href="/dashboard"
-              className="w-11 h-11 rounded-2xl border border-zinc-200 flex items-center justify-center"
-            >
-              <ArrowLeft size={18} />
-            </Link>
-
-            <h1 className="text-2xl font-semibold">
-              Artha<span className="text-zinc-400">Mind</span>
-            </h1>
-          </div>
-
-          <div className="px-5 py-2.5 rounded-2xl bg-zinc-900 text-white flex items-center gap-2">
-            <Sparkles size={18} />
-            Laporan Pintar
-          </div>
-        </div>
-      </header>
-
+      <Header />
       <section className="pt-28 px-6 lg:px-20 pb-10">
         <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-8 items-center">
           <motion.div
@@ -252,13 +230,6 @@ export default function Page() {
         <div className="max-w-7xl mx-auto rounded-[32px] border border-zinc-200 bg-white shadow-xl overflow-hidden">
           <div className="p-6 border-b border-zinc-100 flex items-center justify-between">
             <h2 className="text-xl font-semibold">Riwayat Transaksi</h2>
-
-            <Link
-              href="/dashboard"
-              className="text-sm text-zinc-500 inline-flex items-center gap-1"
-            >
-              Kembali <ArrowRight size={14} />
-            </Link>
           </div>
 
           {loading ? (
