@@ -279,7 +279,7 @@ export default function TransactionInputPage() {
         <div className="max-w-7xl mx-auto px-6 lg:px-20 h-20 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Link
-              href="/"
+              href="/dashboard"
               className="w-11 h-11 rounded-2xl border border-zinc-200 flex items-center justify-center hover:bg-zinc-100 transition"
             >
               <ArrowLeft size={18} />

@@ -3,7 +3,8 @@
 import React from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, Lock, Mail, Sparkles } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { ArrowLeft, ArrowRight, Lock, Mail } from "lucide-react";
 import { supabase } from "../../utils/supabase";
 
 const fadeUp = {
@@ -23,19 +24,50 @@ const floatAnim = {
 
 
 export default function LoginPage() {
+  const router = useRouter();
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
+  const [status, setStatus] = React.useState("");
+  const [loading, setLoading] = React.useState(false);
+
+  React.useEffect(() => {
+    async function checkSession() {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (user) {
+        router.replace("/dashboard");
+      }
+    }
+
+    checkSession();
+  }, [router]);
 
   async function signIn() {
     if (!email || !password) {
-      alert("Please enter both email and password.");
+      setStatus("Email dan password wajib diisi.");
       return;
     }
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    console.log(data, error);
+
+    setLoading(true);
+    setStatus("Memproses login...");
+
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) throw error;
+
+      setStatus("Login berhasil, mengarahkan ke dashboard...");
+      router.push("/dashboard");
+    } catch (error) {
+      setStatus(error.message || "Login gagal. Cek kembali akun kamu.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -137,10 +169,11 @@ export default function LoginPage() {
               </div>
 
               <button
-                className="w-full py-4 rounded-2xl bg-zinc-900 text-white flex justify-center items-center gap-2 hover:scale-[1.02] transition cursor-pointer"
+                disabled={loading}
+                className="w-full py-4 rounded-2xl bg-zinc-900 text-white flex justify-center items-center gap-2 hover:scale-[1.02] transition cursor-pointer disabled:opacity-60"
                 onClick={() => signIn()}
               >
-                Login <ArrowRight size={18} />
+                {loading ? "Memproses..." : "Login"} <ArrowRight size={18} />
               </button>
 
               <p className="text-center text-sm text-zinc-500">
@@ -149,6 +182,12 @@ export default function LoginPage() {
                   Reset
                 </span>
               </p>
+
+              {status && (
+                <div className="rounded-2xl bg-zinc-100 border border-zinc-200 p-3 text-sm text-zinc-700">
+                  {status}
+                </div>
+              )}
             </div>
           </motion.div>
         </div>
