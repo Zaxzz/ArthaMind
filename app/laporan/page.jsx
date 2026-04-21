@@ -1,3 +1,5 @@
+// app/laporan/page.jsx
+
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -12,7 +14,6 @@ import {
   FileSpreadsheet,
   FileText,
   Sparkles,
-  Wallet,
   TrendingUp,
   ArrowRight,
 } from "lucide-react";
@@ -26,6 +27,7 @@ const fadeUp = {
 export default function Page() {
   const [loading, setLoading] = useState(true);
   const [transactions, setTransactions] = useState([]);
+  const [aiSummary, setAiSummary] = useState("Memuat analisis AI...");
 
   useEffect(() => {
     async function loadData() {
@@ -42,6 +44,25 @@ export default function Page() {
         .order("created_at", { ascending: false });
 
       setTransactions(data || []);
+
+      // ambil AI Summary
+      const res = await fetch("/api/ai", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          userId: user.id,
+          mode: "report",
+        }),
+      });
+
+      const result = await res.json();
+
+      if (result.success) {
+        setAiSummary(result.reply);
+      }
+
       setLoading(false);
     }
 
@@ -107,17 +128,6 @@ export default function Page() {
       { header: "Jumlah", key: "jumlah", width: 18 },
     ];
 
-    sheet.getRow(1).font = {
-      bold: true,
-      color: { argb: "FFFFFF" },
-    };
-
-    sheet.getRow(1).fill = {
-      type: "pattern",
-      pattern: "solid",
-      fgColor: { argb: "18181B" },
-    };
-
     transactions.forEach((item) => {
       sheet.addRow({
         tanggal: item.created_at?.slice(0, 10),
@@ -132,19 +142,18 @@ export default function Page() {
   };
 
   return (
-    <main className="min-h-screen bg-white text-zinc-900 overflow-hidden">
-      {/* NAVBAR */}
+    <main className="min-h-screen bg-white text-zinc-900">
       <header className="fixed top-0 left-0 w-full z-50 bg-white/80 backdrop-blur-xl border-b border-zinc-100">
         <div className="max-w-7xl mx-auto px-6 lg:px-20 h-20 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Link
               href="/dashboard"
-              className="w-11 h-11 rounded-2xl border border-zinc-200 flex items-center justify-center hover:bg-zinc-100 transition"
+              className="w-11 h-11 rounded-2xl border border-zinc-200 flex items-center justify-center"
             >
               <ArrowLeft size={18} />
             </Link>
 
-            <h1 className="text-2xl font-semibold tracking-tight">
+            <h1 className="text-2xl font-semibold">
               Artha<span className="text-zinc-400">Mind</span>
             </h1>
           </div>
@@ -156,7 +165,6 @@ export default function Page() {
         </div>
       </header>
 
-      {/* HERO */}
       <section className="pt-28 px-6 lg:px-20 pb-10">
         <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-8 items-center">
           <motion.div
@@ -169,26 +177,17 @@ export default function Page() {
               Export & Ringkasan Keuangan
             </motion.p>
 
-            {/* <motion.h1
-              variants={fadeUp}
-              className="text-5xl lg:text-6xl font-semibold tracking-tight leading-tight"
-            >
-              Laporan Usaha
-              <span className="block text-zinc-400">Lebih Profesional</span>
-            </motion.h1> */}
-
             <motion.p
               variants={fadeUp}
               className="text-zinc-600 text-lg max-w-xl"
             >
-              Download laporan PDF & Excel otomatis berdasarkan transaksi usaha
-              kamu. Cocok untuk evaluasi, investor, dan pengajuan modal.
+              Download laporan PDF & Excel otomatis berdasarkan transaksi usaha.
             </motion.p>
 
-            <motion.div variants={fadeUp} className="flex flex-wrap gap-3">
+            <motion.div variants={fadeUp} className="flex gap-3">
               <button
                 onClick={exportPDF}
-                className="px-6 py-4 rounded-2xl bg-zinc-900 text-white inline-flex items-center gap-2 hover:scale-105 transition"
+                className="px-6 py-4 rounded-2xl bg-zinc-900 text-white inline-flex items-center gap-2"
               >
                 <FileText size={18} />
                 Export PDF
@@ -196,7 +195,7 @@ export default function Page() {
 
               <button
                 onClick={exportExcel}
-                className="px-6 py-4 rounded-2xl border border-zinc-300 hover:bg-zinc-100 transition inline-flex items-center gap-2"
+                className="px-6 py-4 rounded-2xl border border-zinc-300 inline-flex items-center gap-2"
               >
                 <FileSpreadsheet size={18} />
                 Export Excel
@@ -204,12 +203,7 @@ export default function Page() {
             </motion.div>
           </motion.div>
 
-          {/* CARD SUMMARY */}
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="rounded-[32px] border border-zinc-200 bg-white shadow-2xl p-6 space-y-5"
-          >
+          <div className="rounded-[32px] border border-zinc-200 bg-white shadow-2xl p-6 space-y-5">
             <div className="grid grid-cols-2 gap-4">
               <div className="p-5 rounded-2xl bg-zinc-900 text-white">
                 <p className="text-sm opacity-70">Pemasukan</p>
@@ -236,11 +230,24 @@ export default function Page() {
                 Rp{report.laba.toLocaleString("id-ID")}
               </h2>
             </div>
-          </motion.div>
+          </div>
+        </div>
+
+        {/* AI BOX */}
+        <div className="max-w-7xl mx-auto mt-8">
+          <div className="rounded-[32px] bg-zinc-900 text-white p-8 shadow-2xl">
+            <div className="flex items-center gap-3 mb-4">
+              <Sparkles size={20} />
+              <h2 className="text-xl font-semibold">Analisis AI ArthaMind</h2>
+            </div>
+
+            <p className="text-zinc-300 leading-relaxed">
+              {loading ? "Memuat..." : aiSummary}
+            </p>
+          </div>
         </div>
       </section>
 
-      {/* TABLE */}
       <section className="px-6 lg:px-20 pb-20">
         <div className="max-w-7xl mx-auto rounded-[32px] border border-zinc-200 bg-white shadow-xl overflow-hidden">
           <div className="p-6 border-b border-zinc-100 flex items-center justify-between">
@@ -248,7 +255,7 @@ export default function Page() {
 
             <Link
               href="/dashboard"
-              className="text-sm text-zinc-500 hover:text-zinc-900 inline-flex items-center gap-1"
+              className="text-sm text-zinc-500 inline-flex items-center gap-1"
             >
               Kembali <ArrowRight size={14} />
             </Link>
@@ -259,10 +266,7 @@ export default function Page() {
           ) : (
             <div className="divide-y">
               {transactions.map((item, i) => (
-                <div
-                  key={i}
-                  className="p-5 flex items-center justify-between hover:bg-zinc-50 transition"
-                >
+                <div key={i} className="p-5 flex items-center justify-between">
                   <div>
                     <p className="font-medium">{item.kategori}</p>
                     <p className="text-sm text-zinc-500">
