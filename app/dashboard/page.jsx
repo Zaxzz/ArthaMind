@@ -226,7 +226,7 @@ export default function DashboardPage() {
             </Link>
             <button
               onClick={handleLogout}
-              className="px-4 py-2 rounded-2xl border border-zinc-300 text-sm hover:bg-zinc-100 transition inline-flex items-center gap-2"
+              className="px-4 py-2 rounded-2xl border border-zinc-300 text-sm hover:bg-red-100 hover:border-red-400 transition inline-flex items-center gap-2"
             >
               <LogOut size={16} />
               Keluar
