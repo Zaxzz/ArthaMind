@@ -1,4 +1,9 @@
-import { supabase } from "./supabase";
+import { createClient } from "@supabase/supabase-js";
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY,
+);
 
 export async function getFinanceData(userId) {
   const { data: transaksi } = await supabase
@@ -19,19 +24,30 @@ export async function getFinanceData(userId) {
   let income = 0;
   let expense = 0;
 
-  transaksi?.forEach((item) => {
-    if (item.jenis === "pemasukan") income += Number(item.jumlah);
-    if (item.jenis === "pengeluaran") expense += Number(item.jumlah);
-  });
+  (transaksi || []).forEach((item) => {
+    const jenis = String(item.jenis || "")
+      .toLowerCase()
+      .trim();
 
-  const saldo = income - expense;
+    const jumlah = Number(
+      item.jumlah ?? item.nominal ?? item.amount ?? item.total ?? 0,
+    );
+
+    if (jenis === "pemasukan" || jenis === "masuk" || jenis === "income") {
+      income += jumlah;
+    }
+
+    if (jenis === "pengeluaran" || jenis === "keluar" || jenis === "expense") {
+      expense += jumlah;
+    }
+  });
 
   return {
     income,
     expense,
-    saldo,
-    transaksi,
-    hutang,
-    aset,
+    saldo: income - expense,
+    transaksi: transaksi || [],
+    hutang: hutang || [],
+    aset: aset || [],
   };
 }
