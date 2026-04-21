@@ -22,8 +22,8 @@ import {
 
 const METHODS = [
   { key: "manual", label: "Manual" },
-  { key: "ocr", label: "OCR Foto Struk" },
-  { key: "voice", label: "Input Suara" },
+  { key: "ocr", label: "Foto Struk" },
+  { key: "voice", label: "Suara" },
 ];
 
 const fadeUp = {
@@ -463,7 +463,7 @@ export default function TransactionInputPage() {
 
             {method === "ocr" && (
               <div className="space-y-4">
-                <h2 className="text-2xl font-semibold">OCR Foto Struk</h2>
+                <h2 className="text-2xl font-semibold">Foto Struk</h2>
 
                 <input
                   type="file"
@@ -498,7 +498,7 @@ export default function TransactionInputPage() {
                   onClick={() => processWithGrokAndSave(ocrText, "ocr")}
                   className="px-6 py-3 rounded-2xl bg-zinc-900 text-white hover:scale-105 transition disabled:opacity-60"
                 >
-                  Proses Grok & Simpan
+                 Simpan
                 </button>
               </div>
             )}
@@ -506,7 +506,7 @@ export default function TransactionInputPage() {
             {method === "voice" && (
               <div className="space-y-4">
                 <h2 className="text-2xl font-semibold">
-                  Input Suara (Web Speech API)
+                  Input Suara 
                 </h2>
 
                 <div className="flex flex-wrap items-center gap-3">
@@ -548,7 +548,7 @@ export default function TransactionInputPage() {
                   onClick={() => processWithGrokAndSave(voiceText, "voice")}
                   className="px-6 py-3 rounded-2xl bg-zinc-900 text-white hover:scale-105 transition disabled:opacity-60"
                 >
-                  Proses Grok & Simpan
+                  Simpan
                 </button>
               </div>
             )}
