@@ -10,6 +10,7 @@ import {
   Filter,
   LogOut,
   PlusCircle,
+  Receipt,
   Save,
   Search,
   Trash2,
@@ -31,6 +32,7 @@ import {
   normalizeJenis,
   sortTransactionsByDateDesc,
 } from "@/utils/transactionUtils";
+import Header from "../../component/Header";
 
 const COLUMN_ERROR_PATTERN =
   /column|schema cache|does not exist|Could not find the '.*' column/i;
@@ -582,10 +584,9 @@ export default function BukuKasPage() {
                             }`}
                           >
                             {jenis === "pemasukan" ? "+" : "-"}
-                            {formatRupiah(getTransactionAmount(transaction)).replace(
-                              "Rp",
-                              "Rp ",
-                            )}
+                            {formatRupiah(
+                              getTransactionAmount(transaction),
+                            ).replace("Rp", "Rp ")}
                           </td>
                           <td className="py-4 pr-3 text-zinc-600 max-w-[280px]">
                             <p className="truncate">

@@ -25,6 +25,7 @@ import {
   sortTransactionsByDateDesc,
   toDateKey,
 } from "@/utils/transactionUtils";
+import Header from "../../component/Header";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 25 },
