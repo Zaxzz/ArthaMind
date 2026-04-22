@@ -30,6 +30,9 @@ const fadeUp = {
   show: { opacity: 1, y: 0 },
 };
 
+const MIN_VOICE_DURATION_MS = 6000;
+const MIN_VOICE_WORDS = 4;
+
 const COLUMN_ERROR_PATTERN =
   /column|schema cache|does not exist|Could not find the '.*' column/i;
 
@@ -39,6 +42,32 @@ function cleanPayload(payload) {
       ([, value]) => value !== undefined && value !== null && value !== "",
     ),
   );
+}
+
+function toUserFriendlyError(message, fallbackMessage) {
+  const text = String(message || "").toLowerCase();
+
+  if (
+    text.includes("network") ||
+    text.includes("failed to fetch") ||
+    text.includes("internet")
+  ) {
+    return "Koneksi internet terputus. Coba lagi setelah koneksi stabil.";
+  }
+
+  if (text.includes("login") || text.includes("akses ditolak")) {
+    return "Sesi login kamu sudah habis. Silakan login ulang dulu.";
+  }
+
+  if (
+    text.includes("check constraint") ||
+    text.includes("invalid input") ||
+    text.includes("null value")
+  ) {
+    return "Data transaksi belum valid. Cek jenis, kategori, nominal, dan tanggal lalu coba lagi.";
+  }
+
+  return fallbackMessage;
 }
 
 async function insertManualTransaction(payload) {
@@ -98,6 +127,9 @@ export default function TransactionInputPage() {
 
   const [voiceText, setVoiceText] = useState("");
   const [listening, setListening] = useState(false);
+  const [pendingJenisConfirmation, setPendingJenisConfirmation] = useState(null);
+  const [selectedJenisConfirmation, setSelectedJenisConfirmation] =
+    useState("pengeluaran");
   const [speechSupported] = useState(
     () =>
       typeof window !== "undefined" &&
@@ -105,6 +137,9 @@ export default function TransactionInputPage() {
         Boolean(window.webkitSpeechRecognition)),
   );
   const recognitionRef = useRef(null);
+  const voiceFinalTextRef = useRef("");
+  const voiceStartedAtRef = useRef(0);
+  const stopRequestedRef = useRef(false);
 
   const manualCategoryOptions = useMemo(
     () => getCategoriesByJenis(manualForm.jenis),
@@ -153,19 +188,27 @@ export default function TransactionInputPage() {
         deskripsi: "",
       }));
     } catch (error) {
-      setStatus(error.message || "Gagal menyimpan transaksi manual.");
+      setStatus(
+        toUserFriendlyError(
+          error?.message,
+          "Transaksi manual belum bisa disimpan. Coba cek datanya lagi.",
+        ),
+      );
     } finally {
       setLoading(false);
     }
   };
 
-  const processWithGrokAndSave = async (rawText, source) => {
+  const processWithGrokAndSave = async (rawText, source, jenisOverride) => {
     if (!rawText.trim()) {
       setStatus("Input masih kosong.");
       return;
     }
 
     setLoading(true);
+    if (jenisOverride) {
+      setPendingJenisConfirmation(null);
+    }
     setStatus(`Memproses ${source} via Grok dan menyimpan transaksi...`);
 
     try {
@@ -186,22 +229,41 @@ export default function TransactionInputPage() {
           rawText,
           userId: user.id,
           source,
+          jenisOverride,
         }),
       });
 
       const result = await response.json();
 
+      if (response.status === 422 && result.code === "NEEDS_JENIS_CONFIRMATION") {
+        const suggestedJenis = result?.draft?.suggestedJenis || "pengeluaran";
+        setPendingJenisConfirmation({
+          rawText,
+          source,
+          draft: result.draft || null,
+        });
+        setSelectedJenisConfirmation(suggestedJenis);
+        setStatus(result.message || "Pilih jenis transaksi untuk melanjutkan.");
+        return;
+      }
+
       if (!response.ok || !result.success) {
         throw new Error(result.message || "Gagal memproses transaksi.");
       }
 
+      setPendingJenisConfirmation(null);
       setStatus(
         `Berhasil disimpan: ${result.parsed.jenis} (${result.parsed.kategori}) Rp${Number(
           result.parsed.jumlah,
         ).toLocaleString("id-ID")}.`,
       );
     } catch (error) {
-      setStatus(error.message || "Terjadi error saat memproses transaksi.");
+      setStatus(
+        toUserFriendlyError(
+          error?.message,
+          "Transaksi belum bisa diproses. Coba lagi sebentar lagi.",
+        ),
+      );
     } finally {
       setLoading(false);
     }
@@ -218,10 +280,22 @@ export default function TransactionInputPage() {
 
     try {
       const result = await Tesseract.recognize(ocrFile, "ind+eng");
-      setOcrText(result.data.text || "");
-      setStatus("OCR selesai. Cek hasil teks lalu simpan.");
+      const extractedText = String(result.data.text || "").trim();
+      setOcrText(extractedText);
+
+      if (!extractedText) {
+        setStatus("OCR selesai, tapi teks tidak terbaca.");
+        return;
+      }
+
+      await processWithGrokAndSave(extractedText, "ocr");
     } catch (error) {
-      setStatus(error.message || "OCR gagal dijalankan.");
+      setStatus(
+        toUserFriendlyError(
+          error?.message,
+          "Foto struk belum bisa diproses. Coba foto yang lebih jelas.",
+        ),
+      );
     } finally {
       setOcrLoading(false);
     }
@@ -240,8 +314,11 @@ export default function TransactionInputPage() {
 
     const recognition = new SpeechRecognition();
     recognition.lang = "id-ID";
-    recognition.continuous = false;
+    recognition.continuous = true;
     recognition.interimResults = true;
+    voiceFinalTextRef.current = "";
+    voiceStartedAtRef.current = Date.now();
+    stopRequestedRef.current = false;
 
     recognition.onresult = (event) => {
       let finalTranscript = "";
@@ -250,27 +327,54 @@ export default function TransactionInputPage() {
         finalTranscript += event.results[i][0].transcript;
       }
 
-      setVoiceText(finalTranscript.trim());
+      const cleanedTranscript = finalTranscript.trim();
+      voiceFinalTextRef.current = cleanedTranscript;
+      setVoiceText(cleanedTranscript);
     };
 
     recognition.onerror = (event) => {
-      setStatus(`Input suara gagal: ${event.error}`);
+      const isNoSpeech = event.error === "no-speech";
+      setStatus(
+        isNoSpeech
+          ? "Suara belum terdengar. Coba bicara lebih jelas atau lebih dekat ke mikrofon."
+          : "Rekaman suara gagal diproses. Coba rekam ulang.",
+      );
       setListening(false);
     };
 
-    recognition.onend = () => {
+    recognition.onend = async () => {
       setListening(false);
+      const finalText = voiceFinalTextRef.current.trim();
+      const duration = Date.now() - voiceStartedAtRef.current;
+      const totalWords = finalText.split(/\s+/).filter(Boolean).length;
+
+      if (!finalText) {
+        setStatus("Belum ada suara yang terbaca. Coba rekam ulang.");
+        return;
+      }
+
+      if (
+        !stopRequestedRef.current &&
+        (duration < MIN_VOICE_DURATION_MS || totalWords < MIN_VOICE_WORDS)
+      ) {
+        setStatus(
+          "Rekaman terlalu singkat. Lanjutkan bicara lebih lengkap, lalu tekan Stop saat selesai.",
+        );
+        return;
+      }
+
+      await processWithGrokAndSave(finalText, "voice");
     };
 
     recognitionRef.current = recognition;
     recognition.start();
     setListening(true);
-    setStatus("Sedang mendengarkan...");
+    setStatus("Sedang merekam... Ceritakan transaksi dengan lengkap lalu tekan Stop.");
   };
 
   const stopListening = () => {
+    stopRequestedRef.current = true;
     recognitionRef.current?.stop();
-    setListening(false);
   };
 
   async function handleLogout() {
@@ -458,7 +562,7 @@ export default function TransactionInputPage() {
                 />
 
                 <button
-                  disabled={ocrLoading}
+                  disabled={ocrLoading || loading}
                   onClick={runOcr}
                   className="px-6 py-3 rounded-2xl bg-zinc-900 text-white hover:scale-105 transition disabled:opacity-60 inline-flex items-center gap-2"
                 >
@@ -467,7 +571,7 @@ export default function TransactionInputPage() {
                   ) : (
                     <ScanLine size={18} />
                   )}
-                  Jalankan OCR
+                  Jalankan OCR & Simpan Otomatis
                 </button>
 
                 <textarea
@@ -478,13 +582,37 @@ export default function TransactionInputPage() {
                   className="w-full px-4 py-3 rounded-2xl border border-zinc-200 outline-none resize-none"
                 />
 
-                <button
-                  disabled={loading}
-                  onClick={() => processWithGrokAndSave(ocrText, "ocr")}
-                  className="px-6 py-3 rounded-2xl bg-zinc-900 text-white hover:scale-105 transition disabled:opacity-60"
-                >
-                 Simpan
-                </button>
+                {pendingJenisConfirmation?.source === "ocr" && (
+                  <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 space-y-3">
+                    <p className="text-sm text-amber-800">
+                      Jenis transaksi belum yakin. Pilih jenis untuk langkah
+                      terakhir sebelum disimpan.
+                    </p>
+                    <select
+                      value={selectedJenisConfirmation}
+                      onChange={(event) =>
+                        setSelectedJenisConfirmation(event.target.value)
+                      }
+                      className="w-full px-4 py-3 rounded-2xl border border-zinc-200 bg-white outline-none"
+                    >
+                      <option value="pengeluaran">Pengeluaran</option>
+                      <option value="pemasukan">Pemasukan</option>
+                    </select>
+                    <button
+                      disabled={loading}
+                      onClick={() =>
+                        processWithGrokAndSave(
+                          pendingJenisConfirmation.rawText,
+                          "ocr",
+                          selectedJenisConfirmation,
+                        )
+                      }
+                      className="px-6 py-3 rounded-2xl bg-zinc-900 text-white hover:scale-105 transition disabled:opacity-60"
+                    >
+                      Lanjutkan Simpan
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 
@@ -495,18 +623,18 @@ export default function TransactionInputPage() {
                 </h2>
 
                 <div className="flex flex-wrap items-center gap-3">
-                  <button
-                    onClick={startListening}
-                    disabled={listening || !speechSupported}
+                <button
+                  onClick={startListening}
+                  disabled={listening || !speechSupported}
                     className="px-6 py-3 rounded-2xl bg-zinc-900 text-white hover:scale-105 transition disabled:opacity-60 inline-flex items-center gap-2"
                   >
                     <Mic size={18} />
-                    Mulai Rekam
+                    Mulai Rekam (lebih lama)
                   </button>
 
-                  <button
-                    onClick={stopListening}
-                    disabled={!listening}
+                <button
+                  onClick={stopListening}
+                  disabled={!listening}
                     className="px-6 py-3 rounded-2xl border border-zinc-300 hover:bg-zinc-100 transition disabled:opacity-60 inline-flex items-center gap-2"
                   >
                     <Square size={18} />
@@ -522,7 +650,7 @@ export default function TransactionInputPage() {
 
                 <textarea
                   rows={8}
-                  placeholder='Contoh: "Tadi beli bahan baku 250 ribu di pasar"'
+                  placeholder='Template: "Jenis transaksi ..., tanggal ..., nominal ..., kategori ..., deskripsi ...". Contoh: "Pengeluaran hari ini 120 ribu untuk bahan baku sayur di Pasar Kosambi."'
                   value={voiceText}
                   onChange={(e) => setVoiceText(e.target.value)}
                   className="w-full px-4 py-3 rounded-2xl border border-zinc-200 outline-none resize-none"
@@ -533,8 +661,40 @@ export default function TransactionInputPage() {
                   onClick={() => processWithGrokAndSave(voiceText, "voice")}
                   className="px-6 py-3 rounded-2xl bg-zinc-900 text-white hover:scale-105 transition disabled:opacity-60"
                 >
-                  Simpan
+                  Proses Ulang & Simpan
                 </button>
+
+                {pendingJenisConfirmation?.source === "voice" && (
+                  <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 space-y-3">
+                    <p className="text-sm text-amber-800">
+                      Jenis transaksi belum yakin. Pilih jenis untuk langkah
+                      terakhir sebelum disimpan.
+                    </p>
+                    <select
+                      value={selectedJenisConfirmation}
+                      onChange={(event) =>
+                        setSelectedJenisConfirmation(event.target.value)
+                      }
+                      className="w-full px-4 py-3 rounded-2xl border border-zinc-200 bg-white outline-none"
+                    >
+                      <option value="pengeluaran">Pengeluaran</option>
+                      <option value="pemasukan">Pemasukan</option>
+                    </select>
+                    <button
+                      disabled={loading}
+                      onClick={() =>
+                        processWithGrokAndSave(
+                          pendingJenisConfirmation.rawText,
+                          "voice",
+                          selectedJenisConfirmation,
+                        )
+                      }
+                      className="px-6 py-3 rounded-2xl bg-zinc-900 text-white hover:scale-105 transition disabled:opacity-60"
+                    >
+                      Lanjutkan Simpan
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 

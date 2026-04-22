@@ -10,18 +10,13 @@ import {
   TrendingUp,
   AlertCircle,
 } from "lucide-react";
-import { createClient } from "@supabase/supabase-js";
 import AppShellHeader from "@/app/components/AppShellHeader";
+import { supabaseClient } from "../../utils/supabase";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 25 },
   show: { opacity: 1, y: 0 },
 };
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-);
 
 export default function Page() {
   const router = useRouter();
@@ -47,11 +42,11 @@ export default function Page() {
     async function loadFinance() {
       const {
         data: { user },
-      } = await supabase.auth.getUser();
+      } = await supabaseClient.auth.getUser();
 
       if (!mounted || !user) return;
 
-      const { data } = await supabase
+      const { data } = await supabaseClient
         .from("transaksi")
         .select("*")
         .eq("user_id", user.id);
@@ -98,7 +93,7 @@ export default function Page() {
     try {
       const {
         data: { user },
-      } = await supabase.auth.getUser();
+      } = await supabaseClient.auth.getUser();
 
       const res = await fetch("/api/ai", {
         method: "POST",
@@ -141,7 +136,7 @@ export default function Page() {
   ];
 
   async function handleLogout() {
-    await supabase.auth.signOut();
+    await supabaseClient.auth.signOut();
     router.replace("/login");
   }
 

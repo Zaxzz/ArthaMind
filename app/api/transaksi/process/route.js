@@ -1,14 +1,8 @@
-import { createClient } from "@supabase/supabase-js";
+import { createServerClient } from "@supabase/ssr";
+import { NextResponse } from "next/server";
 import { parseTransactionInput } from "@/utils/parseTransactionInput";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-);
-
-const COLUMN_ERROR_PATTERN =
-  /column|schema cache|does not exist|Could not find the '.*' column/i;
-
+// Fungsi untuk membuang data yang kosong/undefined agar database tidak protes
 function cleanPayload(payload) {
   return Object.fromEntries(
     Object.entries(payload).filter(
@@ -17,96 +11,165 @@ function cleanPayload(payload) {
   );
 }
 
-async function insertTransaction(payload) {
-  const normalizedPayload = cleanPayload(payload);
+function formatDbError(error) {
+  const message = String(error?.message || "").toLowerCase();
+  const code = String(error?.code || "");
 
-  const candidates = [
-    normalizedPayload,
-    cleanPayload({
-      user_id: payload.user_id,
-      jenis: payload.jenis,
-      kategori: payload.kategori,
-      jumlah: payload.jumlah,
-      tanggal: payload.tanggal,
-      deskripsi: payload.deskripsi,
-    }),
-    cleanPayload({
-      user_id: payload.user_id,
-      jenis: payload.jenis,
-      kategori: payload.kategori,
-      jumlah: payload.jumlah,
-    }),
-  ];
-
-  let lastError = null;
-
-  for (const candidate of candidates) {
-    const { data, error } = await supabase
-      .from("transaksi")
-      .insert(candidate)
-      .select()
-      .single();
-
-    if (!error) {
-      return { data, usedPayload: candidate, error: null };
-    }
-
-    lastError = error;
-
-    if (!COLUMN_ERROR_PATTERN.test(error.message || "")) {
-      break;
-    }
+  if (code === "23514" || message.includes("check constraint")) {
+    return "Data transaksi belum sesuai aturan. Cek lagi jenis, kategori, nominal, dan tanggalnya.";
   }
 
-  return { data: null, usedPayload: null, error: lastError };
+  if (code === "23502" || message.includes("null value")) {
+    return "Data transaksi belum lengkap. Mohon lengkapi kolom wajib lalu coba lagi.";
+  }
+
+  if (
+    code === "23503" ||
+    message.includes("foreign key") ||
+    message.includes("violates row-level security")
+  ) {
+    return "Akses simpan transaksi ditolak. Silakan login ulang lalu coba lagi.";
+  }
+
+  if (message.includes("invalid input syntax for type date")) {
+    return "Format tanggal belum sesuai. Gunakan format tanggal yang valid.";
+  }
+
+  if (message.includes("invalid input syntax for type numeric")) {
+    return "Nominal transaksi belum valid. Gunakan angka tanpa huruf.";
+  }
+
+  return "Transaksi belum bisa disimpan. Silakan cek lagi datanya lalu coba ulang.";
+}
+
+function pickBusinessName(profile, user) {
+  return (
+    profile?.nama_usaha ||
+    profile?.nama_toko ||
+    profile?.business_name ||
+    profile?.nama_business ||
+    user?.user_metadata?.nama_usaha ||
+    user?.user_metadata?.nama_toko ||
+    user?.user_metadata?.nama_pemilik ||
+    ""
+  );
 }
 
 export async function POST(request) {
   try {
-    const { rawText, userId, source } = await request.json();
+    // 1. Ambil data dari frontend (TIDAK PERLU ambil userId dari body lagi demi keamanan)
+    const { rawText, source, jenisOverride } = await request.json();
 
-    if (!rawText || !userId) {
-      return Response.json(
-        { success: false, message: "rawText dan userId wajib diisi." },
+    if (!rawText) {
+      return NextResponse.json(
+        { success: false, message: "Teks (rawText) wajib diisi." },
         { status: 400 },
       );
     }
 
-    const parsed = await parseTransactionInput(rawText, source);
+    // 3. Buat koneksi Supabase khusus Server yang PAHAM identitas user
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+      {
+        cookies: {
+          getAll() {
+            return request.cookies.getAll();
+          },
+          setAll() {},
+        },
+      },
+    );
 
-    const payload = {
-      user_id: userId,
+    // 4. BACA IDENTITAS SECARA AMAN (Cegat jika token palsu/kosong)
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json(
+        { success: false, message: "Akses ditolak. Silakan login kembali." },
+        { status: 401 },
+      );
+    }
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    // 5. Kirim teks ke Grok untuk diolah
+    const parsed = await parseTransactionInput(rawText, source, {
+      jenisOverride,
+      businessName: pickBusinessName(profile, user),
+    });
+
+    // 6. Tangani jika Gemini bingung menentukan jenis transaksi
+    if (parsed.requiresJenisConfirmation && !jenisOverride) {
+      return NextResponse.json(
+        {
+          success: false,
+          code: "NEEDS_JENIS_CONFIRMATION",
+          message:
+            "Model belum cukup yakin menentukan pemasukan/pengeluaran. Pilih jenis transaksi untuk melanjutkan.",
+          draft: {
+            suggestedJenis: parsed.suggestedJenis,
+            confidenceJenis: parsed.confidenceJenis,
+            detectedJenisByKeyword: parsed.detectedJenisByKeyword,
+            merchantName: parsed.merchantName,
+            jumlah: parsed.jumlah,
+            kategori: parsed.kategori,
+            deskripsi: parsed.deskripsi,
+            tanggal: parsed.tanggal,
+          },
+        },
+        { status: 422 },
+      );
+    }
+
+    // 7. Siapkan paket data yang akan disimpan ke tabel transaksi
+    const payload = cleanPayload({
+      user_id: user.id, // AMAN: Menggunakan ID langsung dari verifikasi token, bukan dari request body
       jenis: parsed.jenis,
       kategori: parsed.kategori,
       jumlah: parsed.jumlah,
       deskripsi: parsed.deskripsi,
       tanggal: parsed.tanggal,
-      tanggal_transaksi: parsed.tanggal,
       metode_input: source,
-      sumber_input: source,
-      raw_input: rawText,
-    };
+    });
 
-    const { data, error, usedPayload } = await insertTransaction(payload);
+    console.log("Payload siap simpan:", payload);
 
+    // 8. Eksekusi penyimpanan ke Supabase secara langsung tanpa looping rumit
+    const { data, error } = await supabase
+      .from("transaksi")
+      .insert(payload)
+      .select()
+      .single();
+
+    // 9. Jika satpam database (RLS / Check Constraint) menolak
     if (error) {
-      return Response.json(
+      return NextResponse.json(
         {
           success: false,
-          message: error.message || "Gagal simpan transaksi.",
+          message: formatDbError(error),
         },
         { status: 500 },
       );
     }
 
-    return Response.json({
+    // 10. Jika sukses, kembalikan hasil ke layar frontend
+    return NextResponse.json({
       success: true,
       parsed,
       transaksi: data,
-      usedPayload,
+      usedPayload: payload,
     });
   } catch (error) {
-    return Response.json(
+    console.error("API Route Error:", error);
+    return NextResponse.json(
       {
         success: false,
         message: error?.message || "Terjadi error pada server.",
