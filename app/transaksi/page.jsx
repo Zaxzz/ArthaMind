@@ -18,6 +18,7 @@ import {
   getCategoriesByJenis,
   getDefaultCategory,
 } from "@/utils/transactionCategories";
+import Header from "../../component/Header";
 
 const METHODS = [
   { key: "manual", label: "Manual" },
@@ -383,8 +384,8 @@ export default function TransactionInputPage() {
   }
 
   return (
-    <main className="min-h-screen bg-white text-zinc-900 overflow-x-hidden">
-      <AppShellHeader currentPath="/transaksi" onLogout={handleLogout} />
+    <main className="min-h-screen bg-white text-zinc-900 overflow-hidden">
+      <Header />
 
       <section className="pt-28 px-6 lg:px-20 pb-10">
         <div className="max-w-7xl mx-auto grid lg:grid-cols-3 gap-8">
@@ -501,19 +502,24 @@ export default function TransactionInputPage() {
                   </select>
                 </div>
 
-                <input
-                  type="number"
-                  min="0"
-                  placeholder="Nominal (contoh: 50000)"
-                  value={manualForm.jumlah}
-                  onChange={(e) =>
-                    setManualForm((prev) => ({
-                      ...prev,
-                      jumlah: e.target.value,
-                    }))
-                  }
-                  className="w-full px-4 py-3 rounded-2xl border border-zinc-200 outline-none"
-                />
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 text-sm font-medium">
+                    Rp
+                  </span>
+                  <input
+                    type="number"
+                    min="0"
+                    placeholder="0"
+                    value={manualForm.jumlah}
+                    onChange={(e) =>
+                      setManualForm((prev) => ({
+                        ...prev,
+                        jumlah: e.target.value,
+                      }))
+                    }
+                    className="w-full pl-12 pr-4 py-3 rounded-2xl border border-zinc-200 outline-none"
+                  />
+                </div>
 
                 <input
                   type="date"

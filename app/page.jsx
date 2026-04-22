@@ -1,20 +1,18 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { supabaseClient } from "@/utils/supabase";
 import {
   ArrowRight,
   BarChart3,
   Bot,
   FileText,
   Mic,
-  Smartphone,
-  Sparkles,
   Wallet,
   CheckCircle2,
 } from "lucide-react";
 import Link from "next/link";
-import React from "react";
+import { supabase } from "@/utils/supabase";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 30 },
@@ -40,11 +38,6 @@ const pulseAnim = {
 };
 
 const features = [
-  // {
-  //   icon: Smartphone,
-  //   title: "Login Super Mudah",
-  //   desc: "Masuk dengan nomor HP + OTP atau Google secara cepat dan aman.",
-  // },
   {
     icon: Wallet,
     title: "Input Transaksi Instan",
@@ -65,33 +58,30 @@ const features = [
     title: "Laporan Otomatis",
     desc: "Unduh laporan PDF harian, mingguan, dan bulanan siap pakai.",
   },
-  // {
-  //   icon: Sparkles,
-  //   title: "Literasi & Reward",
-  //   desc: "Belajar lewat video singkat, quiz, badge, dan sistem poin.",
-  // },
 ];
 
 export default function Page() {
-  const [isLogin, setIsLogin] = React.useState(false);
+  const [isLogin, setIsLogin] = useState(false);
 
-  React.useEffect(() => {
-    async function checkSession() {
-      const {
-        data: { user },
-        error,
-      } = await supabaseClient.auth.getUser();
+  useEffect(() => {
+    checkUser();
 
-      // 5. Jika data user berhasil diambil (tidak null), set status login ke true.
-      if (user) {
-        setIsLogin(true);
-      }
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setIsLogin(!!session);
+    });
 
-      console.log("User session:", user);
-    }
-
-    checkSession();
+    return () => subscription.unsubscribe();
   }, []);
+
+  async function checkUser() {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    setIsLogin(!!session);
+  }
 
   return (
     <main className="bg-white text-zinc-900 overflow-hidden">
@@ -159,10 +149,11 @@ export default function Page() {
 
             <motion.div variants={fadeUp}>
               <Link
-                href="/login"
+                href={isLogin ? "/dashboard" : "/login"}
                 className="px-7 py-4 rounded-2xl bg-zinc-900 text-white inline-flex items-center gap-2 hover:scale-105 transition"
               >
-                Login Sekarang <ArrowRight size={18} />
+                {isLogin ? "Buka Dashboard" : "Login Sekarang"}
+                <ArrowRight size={18} />
               </Link>
             </motion.div>
 
@@ -176,7 +167,7 @@ export default function Page() {
             </motion.div>
           </motion.div>
 
-          {/* MOCKUP DASHBOARD */}
+          {/* MOCKUP */}
           <motion.div animate={floatAnim}>
             <div className="rounded-[32px] border border-zinc-200 bg-white shadow-2xl p-6 space-y-5">
               <div className="flex items-center justify-between">
@@ -211,42 +202,18 @@ export default function Page() {
                 </motion.div>
               </div>
 
-              <motion.div
-                animate={{
-                  boxShadow: [
-                    "0 0 0 rgba(0,0,0,0)",
-                    "0 0 25px rgba(0,0,0,0.08)",
-                    "0 0 0 rgba(0,0,0,0)",
-                  ],
-                }}
-                transition={{
-                  duration: 3,
-                  repeat: Infinity,
-                }}
-                className="p-5 rounded-2xl bg-zinc-50 border"
-              >
+              <div className="p-5 rounded-2xl bg-zinc-50 border">
                 <p className="text-sm text-zinc-500 mb-2">AI Advisor</p>
                 <p className="font-medium">
                   Produk terlaris: Baju Premium. Naikkan harga 5% untuk margin
                   lebih baik.
                 </p>
-              </motion.div>
+              </div>
 
-              <motion.button
-                animate={{
-                  y: [0, -3, 0],
-                }}
-                transition={{
-                  duration: 2,
-                  repeat: Infinity,
-                }}
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.97 }}
-                className="w-full rounded-2xl bg-zinc-900 text-white py-3 flex justify-center items-center gap-2"
-              >
+              <button className="w-full rounded-2xl bg-zinc-900 text-white py-3 flex justify-center items-center gap-2">
                 <Mic size={18} />
                 Input Voice
-              </motion.button>
+              </button>
             </div>
           </motion.div>
         </div>
@@ -264,7 +231,7 @@ export default function Page() {
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-2 gap-6">
+          <div className="grid md:grid-cols-2 gap-6">
             {features.map((item, i) => {
               const Icon = item.icon;
 
@@ -273,9 +240,7 @@ export default function Page() {
                   key={i}
                   initial={{ opacity: 0, y: 25 }}
                   whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: false, amount: 0.2 }}
                   transition={{ delay: i * 0.08 }}
-                  whileHover={{ y: -8 }}
                   className="p-6 rounded-3xl border border-zinc-200 bg-white hover:shadow-xl"
                 >
                   <div className="w-12 h-12 rounded-2xl bg-zinc-100 flex items-center justify-center mb-5">
@@ -308,17 +273,10 @@ export default function Page() {
               "Laporan siap untuk bank & investor.",
               "Dirancang khusus untuk UMKM Indonesia.",
             ].map((text, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, x: 20 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: false }}
-                transition={{ delay: i * 0.1 }}
-                className="flex gap-3"
-              >
+              <div key={i} className="flex gap-3">
                 <CheckCircle2 size={18} className="mt-1" />
                 <p className="text-zinc-300">{text}</p>
-              </motion.div>
+              </div>
             ))}
           </div>
         </div>
@@ -336,10 +294,11 @@ export default function Page() {
           </p>
 
           <Link
-            href="/login"
+            href={isLogin ? "/dashboard" : "/login"}
             className="mt-8 px-7 py-4 rounded-2xl bg-zinc-900 text-white inline-flex items-center gap-2 hover:scale-105 transition"
           >
-            Login Sekarang <ArrowRight size={18} />
+            {isLogin ? "Masuk Dashboard" : "Login Sekarang"}
+            <ArrowRight size={18} />
           </Link>
         </div>
       </section>
@@ -354,12 +313,6 @@ export default function Page() {
           <p className="text-sm text-zinc-500 text-center">
             © 2026 ArthaMind. Empowering UMKM Indonesia with Smart Finance.
           </p>
-
-          <div className="flex gap-5 text-sm text-zinc-500">
-            <a href="#">Privacy</a>
-            <a href="#">Terms</a>
-            <a href="#">Contact</a>
-          </div>
         </div>
       </footer>
     </main>

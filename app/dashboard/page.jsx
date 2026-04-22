@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { FileText } from "lucide-react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -23,6 +24,7 @@ import {
   sortTransactionsByDateDesc,
   toDateKey,
 } from "@/utils/transactionUtils";
+import Header from "../../component/Header";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 25 },
@@ -181,14 +183,9 @@ export default function DashboardPage() {
     [transactions],
   );
 
-  async function handleLogout() {
-    await supabaseClient.auth.signOut();
-    router.replace("/login");
-  }
-
   return (
     <main className="min-h-screen bg-white text-zinc-900 overflow-hidden">
-      <AppShellHeader currentPath="/dashboard" onLogout={handleLogout} />
+      <Header />
 
       <section className="pt-28 px-6 lg:px-20 pb-10">
         <div className="max-w-7xl mx-auto space-y-8">
@@ -225,6 +222,14 @@ export default function DashboardPage() {
                 >
                   <Bot size={18} />
                   Tanya AI Advisor
+                </Link>
+
+                <Link
+                  href="/laporan"
+                  className="px-5 py-3 rounded-2xl bg-emerald-500 text-white hover:bg-emerald-600 transition inline-flex items-center gap-2"
+                >
+                  <FileText size={18} />
+                  Laporan SAK EMKM
                 </Link>
               </div>
             </motion.div>
@@ -273,7 +278,9 @@ export default function DashboardPage() {
               >
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
-                    <h3 className="text-xl font-semibold">Grafik Cashflow 7 Hari</h3>
+                    <h3 className="text-xl font-semibold">
+                      Grafik Cashflow 7 Hari
+                    </h3>
                     <p className="text-sm text-zinc-500">
                       Batang hijau = pemasukan, merah = pengeluaran
                     </p>
@@ -403,7 +410,8 @@ export default function DashboardPage() {
                             {getCategoryLabel(transaction.kategori)}
                           </p>
                           <p className="text-sm text-zinc-500">
-                            {dateKey} • {transaction.deskripsi || "Tanpa deskripsi"}
+                            {dateKey} •{" "}
+                            {transaction.deskripsi || "Tanpa deskripsi"}
                           </p>
                         </div>
 

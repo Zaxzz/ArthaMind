@@ -10,18 +10,13 @@ import {
   TrendingUp,
   AlertCircle,
 } from "lucide-react";
-import { createClient } from "@supabase/supabase-js";
-import AppShellHeader from "@/app/components/AppShellHeader";
+import { supabase } from "@/utils/supabase";
+import Header from "../../component/Header";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 25 },
   show: { opacity: 1, y: 0 },
 };
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-);
 
 export default function Page() {
   const router = useRouter();
@@ -32,7 +27,9 @@ export default function Page() {
       text: "Halo 👋 Saya ArthaMind AI Advisor. Tanyakan profit, cashflow, hutang, atau strategi bisnismu.",
     },
   ]);
+
   const [loading, setLoading] = useState(false);
+
   const [finance, setFinance] = useState({
     saldo: 0,
     income: 0,
@@ -45,32 +42,71 @@ export default function Page() {
     let mounted = true;
 
     async function loadFinance() {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      try {
+        const {
+          data: { user },
+          error: userError,
+        } = await supabase.auth.getUser();
 
-      if (!mounted || !user) return;
+        if (userError || !user) return;
 
-      const { data } = await supabase
-        .from("transaksi")
-        .select("*")
-        .eq("user_id", user.id);
+        const { data, error } = await supabase
+          .from("transaksi")
+          .select("*")
+          .eq("user_id", user.id);
 
-      let income = 0;
-      let expense = 0;
+        if (error) throw error;
 
-      data?.forEach((item) => {
-        if (item.jenis === "pemasukan") income += Number(item.jumlah);
-        if (item.jenis === "pengeluaran") expense += Number(item.jumlah);
-      });
+        let income = 0;
+        let expense = 0;
 
-      if (!mounted) return;
+        (data || []).forEach((item) => {
+          const jenis = String(item?.jenis || "")
+            .toLowerCase()
+            .trim();
 
-      setFinance({
-        income,
-        expense,
-        saldo: income - expense,
-      });
+          const jumlah = Number(
+            item?.jumlah ?? item?.nominal ?? item?.amount ?? item?.total ?? 0,
+          );
+
+          if (
+            jenis === "pemasukan" ||
+            jenis === "masuk" ||
+            jenis === "income"
+          ) {
+            income += jumlah;
+          } else if (
+            jenis === "pengeluaran" ||
+            jenis === "keluar" ||
+            jenis === "expense"
+          ) {
+            expense += jumlah;
+          }
+        });
+
+        if (!mounted) return;
+
+        setFinance({
+          income,
+          expense,
+          saldo: income - expense,
+        });
+
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "ai",
+            text:
+              `Saya sudah membaca data keuangan usaha kamu 📊\n\n` +
+              `Saldo: Rp${(income - expense).toLocaleString("id-ID")}\n` +
+              `Pemasukan: Rp${income.toLocaleString("id-ID")}\n` +
+              `Pengeluaran: Rp${expense.toLocaleString("id-ID")}\n\n` +
+              `Silakan tanya analisis usaha kamu.`,
+          },
+        ]);
+      } catch (err) {
+        console.log("Load finance error:", err.message);
+      }
     }
 
     loadFinance();
@@ -83,6 +119,7 @@ export default function Page() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({
       behavior: "smooth",
+      block: "end",
     });
   }, [messages, loading]);
 
@@ -146,8 +183,8 @@ export default function Page() {
   }
 
   return (
-    <main className="min-h-screen bg-white text-zinc-900 overflow-x-hidden">
-      <AppShellHeader currentPath="/ai-asisten" onLogout={handleLogout} />
+    <main className="min-h-screen bg-white text-zinc-900 overflow-hidden">
+      <Header />
 
       {/* CONTENT */}
       <section className="pt-28 px-6 lg:px-20 pb-10">
@@ -185,6 +222,7 @@ export default function Page() {
               </p>
             </motion.div>
 
+            {/* KEUANGAN */}
             <motion.div
               variants={fadeUp}
               className="rounded-[32px] border border-zinc-200 p-6 bg-white shadow-xl space-y-4"
@@ -220,6 +258,7 @@ export default function Page() {
               </div>
             </motion.div>
 
+            {/* QUICK ASK */}
             <motion.div
               variants={fadeUp}
               className="rounded-[32px] bg-zinc-900 text-white p-6"
@@ -247,74 +286,77 @@ export default function Page() {
           <motion.div
             initial={{ opacity: 0, y: 25 }}
             animate={{ opacity: 1, y: 0 }}
+<<<<<<< HEAD
             className="lg:col-span-2 lg:sticky lg:top-28 lg:self-start rounded-[32px] border border-zinc-200 bg-white shadow-2xl flex flex-col h-[78vh]"
+=======
+            className="lg:col-span-2 rounded-[32px] border border-zinc-200 bg-white shadow-2xl flex flex-col h-[78vh] overflow-hidden"
+>>>>>>> be71cb0e5e1d9202b404b0d2fec166eb28ddfdba
           >
-            {/* TOP */}
-            <div className="p-6 border-b border-zinc-100 flex items-center justify-between">
-              <div>
-                <h2 className="font-semibold text-lg">ArthaMind Assistant</h2>
-                <p className="text-sm text-zinc-500">
-                  AI berbasis data keuangan usahamu
-                </p>
-              </div>
+            {/* HEADER */}
+            <div className="p-6 border-b border-zinc-100">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="font-semibold text-lg">ArthaMind Assistant</h2>
+                  <p className="text-sm text-zinc-500">
+                    AI berbasis data keuangan usahamu
+                  </p>
+                </div>
 
-              <div className="text-emerald-500 flex items-center gap-2 text-sm">
-                <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                Live
+                <div className="flex items-center gap-2 text-sm text-emerald-600">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  Online
+                </div>
               </div>
             </div>
 
             {/* CHAT */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-4">
+            <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-white-50">
               {messages.map((item, i) => (
-                <motion.div
+                <div
                   key={i}
-                  initial={{ opacity: 0, y: 15 }}
-                  animate={{ opacity: 1, y: 0 }}
                   className={`max-w-[80%] rounded-3xl px-5 py-4 ${
                     item.role === "user"
                       ? "ml-auto bg-zinc-900 text-white"
-                      : "bg-zinc-100 text-zinc-900"
+                      : "bg-white border border-zinc-200 text-zinc-900"
                   }`}
                 >
-                  <p className="leading-relaxed whitespace-pre-line">
-                    {item.text}
-                  </p>
-                </motion.div>
+                  <p className="whitespace-pre-line">{item.text}</p>
+                </div>
               ))}
 
               {loading && (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="max-w-[220px] rounded-3xl px-5 py-4 bg-zinc-100"
-                >
+                <div className="rounded-3xl px-5 py-4 bg-white border border-zinc-200 w-fit">
                   <div className="flex gap-2">
                     <span className="w-2 h-2 rounded-full bg-zinc-400 animate-bounce" />
                     <span className="w-2 h-2 rounded-full bg-zinc-400 animate-bounce delay-100" />
                     <span className="w-2 h-2 rounded-full bg-zinc-400 animate-bounce delay-200" />
                   </div>
-                </motion.div>
+                </div>
               )}
 
               <div ref={bottomRef} />
             </div>
 
             {/* INPUT */}
-            <div className="p-5 border-t border-zinc-100">
+            <div className="p-5 border-t border-zinc-100 bg-white">
               <div className="flex gap-3">
                 <input
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      sendMessage();
+                    }
+                  }}
                   placeholder="Tanya sesuatu tentang bisnismu..."
                   className="flex-1 px-5 py-4 rounded-2xl border border-zinc-200 outline-none focus:border-zinc-400"
                 />
 
                 <button
+                  type="button"
                   onClick={sendMessage}
-                  disabled={loading}
-                  className="px-6 rounded-2xl bg-zinc-900 text-white hover:scale-105 transition flex items-center gap-2"
+                  className="px-6 rounded-2xl bg-zinc-900 text-white flex items-center gap-2 hover:scale-105 transition"
                 >
                   <Send size={18} />
                   Kirim
@@ -323,8 +365,7 @@ export default function Page() {
 
               <div className="flex items-center gap-2 text-xs text-zinc-500 mt-3">
                 <AlertCircle size={14} />
-                Saran AI bersifat rekomendasi, tetap sesuaikan keputusan
-                bisnismu.
+                Saran AI bersifat rekomendasi berdasarkan data usaha.
               </div>
             </div>
           </motion.div>

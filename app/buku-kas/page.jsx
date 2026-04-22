@@ -29,6 +29,7 @@ import {
   normalizeJenis,
   sortTransactionsByDateDesc,
 } from "@/utils/transactionUtils";
+import Header from "../../component/Header";
 
 const COLUMN_ERROR_PATTERN =
   /column|schema cache|does not exist|Could not find the '.*' column/i;
@@ -333,14 +334,9 @@ export default function BukuKasPage() {
     }
   }
 
-  async function handleLogout() {
-    await supabaseClient.auth.signOut();
-    router.replace("/login");
-  }
-
   return (
     <main className="min-h-screen bg-white text-zinc-900 overflow-hidden">
-      <AppShellHeader currentPath="/buku-kas" onLogout={handleLogout} />
+      <Header />
 
       <section className="pt-28 px-6 lg:px-20 pb-12">
         <div className="max-w-7xl mx-auto space-y-6">
@@ -539,10 +535,9 @@ export default function BukuKasPage() {
                             }`}
                           >
                             {jenis === "pemasukan" ? "+" : "-"}
-                            {formatRupiah(getTransactionAmount(transaction)).replace(
-                              "Rp",
-                              "Rp ",
-                            )}
+                            {formatRupiah(
+                              getTransactionAmount(transaction),
+                            ).replace("Rp", "Rp ")}
                           </td>
                           <td className="py-4 pr-3 text-zinc-600 max-w-[280px]">
                             <p className="truncate">
@@ -632,19 +627,24 @@ export default function BukuKasPage() {
               </select>
             </div>
 
-            <input
-              type="number"
-              min="0"
-              value={editForm.jumlah}
-              onChange={(event) =>
-                setEditForm((previous) => ({
-                  ...previous,
-                  jumlah: event.target.value,
-                }))
-              }
-              placeholder="Nominal"
-              className="w-full px-4 py-3 rounded-2xl border border-zinc-200 outline-none"
-            />
+            <div className="relative">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 text-sm font-medium">
+                Rp
+              </span>
+              <input
+                type="number"
+                min="0"
+                value={editForm.jumlah}
+                onChange={(event) =>
+                  setEditForm((previous) => ({
+                    ...previous,
+                    jumlah: event.target.value,
+                  }))
+                }
+                placeholder="0"
+                className="w-full pl-12 pr-4 py-3 rounded-2xl border border-zinc-200 outline-none"
+              />
+            </div>
 
             <input
               type="date"
