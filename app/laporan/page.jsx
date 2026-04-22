@@ -6,7 +6,13 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
-import { FileSpreadsheet, FileText, Sparkles, TrendingUp } from "lucide-react";
+import {
+  FileSpreadsheet,
+  FileText,
+  Sparkles,
+  TrendingUp,
+  ChevronDown,
+} from "lucide-react";
 import { supabase } from "@/utils/supabase";
 import Header from "../../component/Header";
 
@@ -16,14 +22,12 @@ const fadeUp = {
 };
 
 export default function Page() {
-  // loading transaksi terpisah
   const [loadingData, setLoadingData] = useState(true);
-
-  // loading AI terpisah
   const [loadingAI, setLoadingAI] = useState(true);
 
   const [transactions, setTransactions] = useState([]);
   const [aiSummary, setAiSummary] = useState("Memuat analisis AI...");
+  const [reportType, setReportType] = useState("posisi");
 
   useEffect(() => {
     async function loadData() {
@@ -33,9 +37,6 @@ export default function Page() {
 
       if (!user) return;
 
-      // =========================
-      // LOAD TRANSAKSI
-      // =========================
       const { data } = await supabase
         .from("transaksi")
         .select("*")
@@ -45,9 +46,6 @@ export default function Page() {
       setTransactions(data || []);
       setLoadingData(false);
 
-      // =========================
-      // LOAD AI (jalan terpisah)
-      // =========================
       fetch("/api/ai", {
         method: "POST",
         headers: {
@@ -60,18 +58,11 @@ export default function Page() {
       })
         .then((res) => res.json())
         .then((result) => {
-          if (result.success) {
-            setAiSummary(result.reply);
-          } else {
-            setAiSummary("AI gagal memberi analisis.");
-          }
+          if (result.success) setAiSummary(result.reply);
+          else setAiSummary("AI gagal memberi analisis.");
         })
-        .catch(() => {
-          setAiSummary("Terjadi kesalahan AI.");
-        })
-        .finally(() => {
-          setLoadingAI(false);
-        });
+        .catch(() => setAiSummary("Terjadi kesalahan AI."))
+        .finally(() => setLoadingAI(false));
     }
 
     loadData();
@@ -89,64 +80,126 @@ export default function Page() {
       else expense += jumlah;
     });
 
+    const laba = income - expense;
+    const modalAwal = 10000000;
+    const prive = 1000000;
+    const modalAkhir = modalAwal + laba - prive;
+
     return {
       income,
       expense,
-      laba: income - expense,
+      laba,
+      modalAwal,
+      prive,
+      modalAkhir,
     };
   }, [transactions]);
 
+  // =======================
+  // EXPORT PDF
+  // =======================
   const exportPDF = () => {
     const doc = new jsPDF();
 
     doc.setFontSize(18);
     doc.text("Laporan Keuangan ArthaMind", 14, 18);
 
-    doc.setFontSize(11);
-    doc.text(`Pemasukan : Rp${report.income.toLocaleString("id-ID")}`, 14, 32);
-    doc.text(
-      `Pengeluaran : Rp${report.expense.toLocaleString("id-ID")}`,
-      14,
-      40,
-    );
-    doc.text(`Laba Bersih : Rp${report.laba.toLocaleString("id-ID")}`, 14, 48);
+    let title = "";
+    let rows = [];
+
+    if (reportType === "posisi") {
+      title = "Laporan Posisi Keuangan";
+      rows = [
+        ["Kas", report.income],
+        ["Liabilitas", 0],
+        ["Modal", report.laba],
+        ["Jumlah", report.income],
+      ];
+    }
+
+    if (reportType === "laba") {
+      title = "Laporan Laba Rugi";
+      rows = [
+        ["Pendapatan", report.income],
+        ["Beban", report.expense],
+        ["Laba Bersih", report.laba],
+      ];
+    }
+
+    if (reportType === "modal") {
+      title = "Laporan Perubahan Modal";
+      rows = [
+        ["Modal Awal", report.modalAwal],
+        ["Laba Bersih", report.laba],
+        ["Prive", report.prive],
+        ["Modal Akhir", report.modalAkhir],
+      ];
+    }
+
+    doc.setFontSize(12);
+    doc.text(title, 14, 28);
 
     autoTable(doc, {
-      startY: 58,
-      head: [["Tanggal", "Jenis", "Kategori", "Jumlah"]],
-      body: transactions.map((item) => [
-        item.created_at?.slice(0, 10),
-        item.jenis,
-        item.kategori,
-        `Rp${Number(item.jumlah).toLocaleString("id-ID")}`,
+      startY: 36,
+      head: [["Keterangan", "Jumlah"]],
+      body: rows.map((row) => [
+        row[0],
+        `Rp${Number(row[1]).toLocaleString("id-ID")}`,
       ]),
     });
 
-    doc.save("laporan-artha-mind.pdf");
+    doc.save(`laporan-${reportType}.pdf`);
   };
 
+  // =======================
+  // EXPORT EXCEL
+  // =======================
   const exportExcel = async () => {
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet("Laporan");
 
     sheet.columns = [
-      { header: "Tanggal", key: "tanggal", width: 18 },
-      { header: "Jenis", key: "jenis", width: 18 },
-      { header: "Kategori", key: "kategori", width: 25 },
-      { header: "Jumlah", key: "jumlah", width: 18 },
+      { header: "Keterangan", key: "ket", width: 28 },
+      { header: "Jumlah", key: "jumlah", width: 20 },
     ];
 
-    transactions.forEach((item) => {
+    let rows = [];
+
+    if (reportType === "posisi") {
+      rows = [
+        ["Kas", report.income],
+        ["Liabilitas", 0],
+        ["Modal", report.laba],
+        ["Jumlah", report.income],
+      ];
+    }
+
+    if (reportType === "laba") {
+      rows = [
+        ["Pendapatan", report.income],
+        ["Beban", report.expense],
+        ["Laba Bersih", report.laba],
+      ];
+    }
+
+    if (reportType === "modal") {
+      rows = [
+        ["Modal Awal", report.modalAwal],
+        ["Laba Bersih", report.laba],
+        ["Prive", report.prive],
+        ["Modal Akhir", report.modalAkhir],
+      ];
+    }
+
+    rows.forEach((item) => {
       sheet.addRow({
-        tanggal: item.created_at?.slice(0, 10),
-        jenis: item.jenis,
-        kategori: item.kategori,
-        jumlah: Number(item.jumlah),
+        ket: item[0],
+        jumlah: item[1],
       });
     });
 
     const buffer = await workbook.xlsx.writeBuffer();
-    saveAs(new Blob([buffer]), "laporan-artha-mind.xlsx");
+    saveAs(new Blob([buffer]), `laporan-${reportType}.xlsx`);
   };
 
   return (
@@ -172,10 +225,30 @@ export default function Page() {
               Download laporan PDF & Excel otomatis berdasarkan transaksi usaha.
             </motion.p>
 
-            <motion.div variants={fadeUp} className="flex gap-3">
+            {/* DROPDOWN MODERN */}
+            <motion.div variants={fadeUp}>
+              <div className="relative max-w-sm">
+                <select
+                  value={reportType}
+                  onChange={(e) => setReportType(e.target.value)}
+                  className="w-full appearance-none rounded-2xl border border-zinc-200 bg-white px-5 py-4 pr-12 text-sm font-medium shadow-sm outline-none transition hover:border-zinc-400 focus:ring-2 focus:ring-zinc-900"
+                >
+                  <option value="posisi"> Posisi Keuangan</option>
+                  <option value="laba"> Laporan Laba Rugi</option>
+                  <option value="modal"> Perubahan Modal</option>
+                </select>
+
+                <ChevronDown
+                  size={18}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none"
+                />
+              </div>
+            </motion.div>
+
+            <motion.div variants={fadeUp} className="flex gap-3 flex-wrap">
               <button
                 onClick={exportPDF}
-                className="px-6 py-4 rounded-2xl bg-zinc-900 text-white inline-flex items-center gap-2"
+                className="px-6 py-4 rounded-2xl bg-zinc-900 text-white inline-flex items-center gap-2 hover:scale-105 transition"
               >
                 <FileText size={18} />
                 Export PDF
@@ -183,7 +256,7 @@ export default function Page() {
 
               <button
                 onClick={exportExcel}
-                className="px-6 py-4 rounded-2xl border border-zinc-300 inline-flex items-center gap-2"
+                className="px-6 py-4 rounded-2xl border border-zinc-300 inline-flex items-center gap-2 hover:bg-zinc-100 transition"
               >
                 <FileSpreadsheet size={18} />
                 Export Excel
