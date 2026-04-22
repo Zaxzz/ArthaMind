@@ -11,8 +11,6 @@ import {
   Square,
 } from "lucide-react";
 import Tesseract from "tesseract.js";
-import { supabaseClient } from "@/utils/supabase";
-import AppShellHeader from "@/app/components/AppShellHeader";
 import {
   TRANSACTION_CATEGORIES,
   getCategoriesByJenis,
@@ -95,7 +93,7 @@ async function insertManualTransaction(payload) {
   let lastError = null;
 
   for (const candidate of candidates) {
-    const { error } = await supabaseClient.from("transaksi").insert(candidate);
+    const { error } = await supabase.from("transaksi").insert(candidate);
 
     if (!error) return;
 
@@ -166,7 +164,7 @@ export default function TransactionInputPage() {
     try {
       const {
         data: { user },
-      } = await supabaseClient.auth.getUser();
+      } = await supabase.auth.getUser();
       console.log("Current user:", user);
 
       if (!user) {
@@ -215,7 +213,7 @@ export default function TransactionInputPage() {
     try {
       const {
         data: { user },
-      } = await supabaseClient.auth.getUser();
+      } = await supabase.auth.getUser();
 
       if (!user) {
         throw new Error("User belum login.");
@@ -379,7 +377,7 @@ export default function TransactionInputPage() {
   };
 
   async function handleLogout() {
-    await supabaseClient.auth.signOut();
+    await supabase.auth.signOut();
     router.replace("/login");
   }
 
@@ -667,7 +665,7 @@ export default function TransactionInputPage() {
                   onClick={() => processWithGrokAndSave(voiceText, "voice")}
                   className="px-6 py-3 rounded-2xl bg-zinc-900 text-white hover:scale-105 transition disabled:opacity-60"
                 >
-                  Proses Ulang & Simpan
+                  Simpan
                 </button>
 
                 {pendingJenisConfirmation?.source === "voice" && (

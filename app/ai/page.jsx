@@ -286,11 +286,7 @@ export default function Page() {
           <motion.div
             initial={{ opacity: 0, y: 25 }}
             animate={{ opacity: 1, y: 0 }}
-<<<<<<< HEAD
-            className="lg:col-span-2 lg:sticky lg:top-28 lg:self-start rounded-[32px] border border-zinc-200 bg-white shadow-2xl flex flex-col h-[78vh]"
-=======
             className="lg:col-span-2 rounded-[32px] border border-zinc-200 bg-white shadow-2xl flex flex-col h-[78vh] overflow-hidden"
->>>>>>> be71cb0e5e1d9202b404b0d2fec166eb28ddfdba
           >
             {/* HEADER */}
             <div className="p-6 border-b border-zinc-100">

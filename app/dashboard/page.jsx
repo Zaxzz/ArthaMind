@@ -13,8 +13,6 @@ import {
   HandCoins,
   Wallet,
 } from "lucide-react";
-import { supabaseClient } from "@/utils/supabase";
-import AppShellHeader from "@/app/components/AppShellHeader";
 import {
   formatRupiah,
   getCategoryLabel,
@@ -25,6 +23,7 @@ import {
   toDateKey,
 } from "@/utils/transactionUtils";
 import Header from "../../component/Header";
+import { supabase } from "../../utils/supabase";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 25 },
@@ -63,7 +62,7 @@ export default function DashboardPage() {
         const {
           data: { user },
           error: userError,
-        } = await supabaseClient.auth.getUser();
+        } = await supabase.auth.getUser();
 
         if (userError) throw userError;
         if (!user) {
@@ -79,7 +78,7 @@ export default function DashboardPage() {
           );
         }
 
-        const { data, error: transactionError } = await supabaseClient
+        const { data, error: transactionError } = await supabase
           .from("transaksi")
           .select("*")
           .eq("user_id", user.id);

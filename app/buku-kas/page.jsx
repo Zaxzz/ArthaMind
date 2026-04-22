@@ -13,8 +13,6 @@ import {
   Wallet,
   X,
 } from "lucide-react";
-import { supabaseClient } from "@/utils/supabase";
-import AppShellHeader from "@/app/components/AppShellHeader";
 import {
   getCategoriesByJenis,
   getDefaultCategory,
@@ -30,6 +28,7 @@ import {
   sortTransactionsByDateDesc,
 } from "@/utils/transactionUtils";
 import Header from "../../component/Header";
+import { supabase } from "../../utils/supabase";
 
 const COLUMN_ERROR_PATTERN =
   /column|schema cache|does not exist|Could not find the '.*' column/i;
@@ -78,7 +77,7 @@ async function updateTransaction(transaction, payload) {
   let lastError = null;
 
   for (const candidate of candidates) {
-    const { data, error } = await supabaseClient
+    const { data, error } = await supabase
       .from("transaksi")
       .update(candidate)
       .eq(identity.field, identity.value)
@@ -144,7 +143,7 @@ export default function BukuKasPage() {
         const {
           data: { user },
           error: userError,
-        } = await supabaseClient.auth.getUser();
+        } = await supabase.auth.getUser();
 
         if (userError) throw userError;
         if (!user) {
@@ -152,7 +151,7 @@ export default function BukuKasPage() {
           return;
         }
 
-        const { data, error } = await supabaseClient
+        const { data, error } = await supabase
           .from("transaksi")
           .select("*")
           .eq("user_id", user.id);
@@ -311,7 +310,7 @@ export default function BukuKasPage() {
     setStatus("Menghapus transaksi...");
 
     try {
-      const { error } = await supabaseClient
+      const { error } = await supabase
         .from("transaksi")
         .delete()
         .eq(identity.field, identity.value);

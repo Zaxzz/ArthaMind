@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Lock, Mail } from "lucide-react";
-import { supabaseClient } from "../../utils/supabase";
+import { supabase } from "../../utils/supabase";
 import AppShellHeader from "@/app/components/AppShellHeader";
 
 const fadeUp = {
@@ -22,8 +22,6 @@ const floatAnim = {
   },
 };
 
-
-
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = React.useState("");
@@ -35,7 +33,7 @@ export default function LoginPage() {
     async function checkSession() {
       const {
         data: { user },
-      } = await supabaseClient.auth.getUser();
+      } = await supabase.auth.getUser();
 
       if (user) {
         router.replace("/dashboard");
@@ -55,7 +53,7 @@ export default function LoginPage() {
     setStatus("Memproses login...");
 
     try {
-      const { error } = await supabaseClient.auth.signInWithPassword({
+      const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
