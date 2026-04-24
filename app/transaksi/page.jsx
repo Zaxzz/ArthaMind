@@ -633,7 +633,7 @@ export default function TransactionInputPage() {
                     className="px-6 py-3 rounded-2xl bg-zinc-900 text-white hover:scale-105 transition disabled:opacity-60 inline-flex items-center gap-2"
                   >
                     <Mic size={18} />
-                    Mulai Rekam (lebih lama)
+                    Mulai Rekam 
                   </button>
 
                 <button
