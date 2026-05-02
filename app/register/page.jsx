@@ -9,7 +9,6 @@ import {
   User,
 } from "lucide-react";
 import { supabase } from "../../utils/supabase";
-import AppShellHeader from "@/app/components/AppShellHeader";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 25 },
@@ -51,10 +50,8 @@ export default function Register() {
 
   return (
     <main className="min-h-screen bg-white text-zinc-900 overflow-hidden">
-      <AppShellHeader currentPath="/register" />
-
       {/* CONTENT */}
-      <section className="min-h-screen flex items-center justify-center px-6 py-10 pt-28">
+      <section className="min-h-screen flex items-center justify-center px-6 py-10">
         <div className="w-full max-w-6xl grid lg:grid-cols-2 gap-10 items-center">
           {/* LEFT SIDE */}
           <motion.div
