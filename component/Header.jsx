@@ -4,13 +4,10 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
-  Bot,
-  BookOpenText,
   HandCoins,
   LayoutDashboard,
   LogOut,
   PlusCircle,
-  Receipt,
 } from "lucide-react";
 import { supabase } from "@/utils/supabase";
 
@@ -44,32 +41,17 @@ export default function Header() {
               Dashboard
             </Link>
 
-            <Link href="/buku-kas" className={`${menuClass("/buku-kas")} shrink-0`}>
-              <BookOpenText size={16} />
-              Buku Kas
-            </Link>
-
             <Link
               href="/hutang-piutang"
               className={`${menuClass("/hutang-piutang")} shrink-0`}
             >
               <HandCoins size={16} />
-              Hutang & Piutang
+              Hutang Piutang
             </Link>
 
             <Link href="/transaksi" className={`${menuClass("/transaksi")} shrink-0`}>
               <PlusCircle size={16} />
               Transaksi
-            </Link>
-
-            <Link href="/ai" className={`${menuClass("/ai")} shrink-0`}>
-              <Bot size={16} />
-              AI Advisor
-            </Link>
-
-            <Link href="/laporan" className={`${menuClass("/laporan")} shrink-0`}>
-              <Receipt size={16} />
-              Laporan
             </Link>
 
             <button

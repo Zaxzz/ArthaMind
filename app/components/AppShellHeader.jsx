@@ -5,9 +5,8 @@ import { LogOut } from "lucide-react";
 
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard" },
-  { href: "/buku-kas", label: "Buku Kas" },
   { href: "/transaksi", label: "Transaksi" },
-  { href: "/ai-asisten", label: "AI Asisten" },
+  { href: "/hutang-piutang", label: "Hutang Piutang" },
 ];
 
 function isActive(currentPath, href) {
