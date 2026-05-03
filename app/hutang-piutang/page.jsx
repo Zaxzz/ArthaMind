@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import {
@@ -8,9 +8,14 @@ import {
   CalendarClock,
   CheckCircle2,
   HandCoins,
+  Loader2,
+  Mic,
   PlusCircle,
+  ScanLine,
+  Square,
   Trash2,
 } from "lucide-react";
+import Tesseract from "tesseract.js";
 import { supabase } from "@/utils/supabase";
 import { formatRupiah } from "@/utils/transactionUtils";
 import Header from "../../component/Header";
@@ -21,6 +26,13 @@ const fadeUp = {
 };
 
 const REMINDER_THRESHOLD_DAYS = 1;
+const METHODS = [
+  { key: "manual", label: "Manual" },
+  { key: "ocr", label: "Dokumen" },
+  { key: "voice", label: "Suara" },
+];
+const MIN_VOICE_DURATION_MS = 6000;
+const MIN_VOICE_WORDS = 4;
 
 function toDateKey(value) {
   if (!value) return null;
@@ -87,6 +99,24 @@ function createId() {
   return `hp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+function toUserFriendlyError(message, fallbackMessage) {
+  const text = String(message || "").toLowerCase();
+
+  if (
+    text.includes("network") ||
+    text.includes("failed to fetch") ||
+    text.includes("internet")
+  ) {
+    return "Koneksi internet terputus. Coba lagi setelah koneksi stabil.";
+  }
+
+  if (text.includes("login") || text.includes("akses ditolak")) {
+    return "Sesi login kamu sudah habis. Silakan login ulang dulu.";
+  }
+
+  return fallbackMessage;
+}
+
 export default function HutangPiutangPage() {
   const router = useRouter();
 
@@ -97,6 +127,23 @@ export default function HutangPiutangPage() {
   const [records, setRecords] = useState([]);
   const [notificationPermission, setNotificationPermission] =
     useState("default");
+  const [method, setMethod] = useState("manual");
+  const [inputLoading, setInputLoading] = useState(false);
+  const [ocrFile, setOcrFile] = useState(null);
+  const [ocrText, setOcrText] = useState("");
+  const [ocrLoading, setOcrLoading] = useState(false);
+  const [voiceText, setVoiceText] = useState("");
+  const [listening, setListening] = useState(false);
+  const [speechSupported] = useState(
+    () =>
+      typeof window !== "undefined" &&
+      (Boolean(window.SpeechRecognition) ||
+        Boolean(window.webkitSpeechRecognition)),
+  );
+  const recognitionRef = useRef(null);
+  const voiceFinalTextRef = useRef("");
+  const voiceStartedAtRef = useRef(0);
+  const stopRequestedRef = useRef(false);
 
   const [form, setForm] = useState({
     jenis: "hutang",
@@ -358,6 +405,8 @@ export default function HutangPiutangPage() {
 
   function handleSubmit(event) {
     event.preventDefault();
+    if (method !== "manual") return;
+
     const nominal = Number(form.nominal);
 
     if (!form.pihak.trim()) {
@@ -394,6 +443,180 @@ export default function HutangPiutangPage() {
       catatan: "",
     }));
     setStatus("Data hutang/piutang berhasil ditambahkan.");
+  }
+
+  async function processWithAi(rawText, source) {
+    if (!rawText.trim()) {
+      setStatus("Input masih kosong.");
+      return;
+    }
+
+    setInputLoading(true);
+    setStatus(`Memproses input ${source}...`);
+
+    try {
+      const response = await fetch("/api/hutang-piutang/process", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          rawText,
+          source,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.message || "Gagal memproses input.");
+      }
+
+      const parsed = result.parsed || {};
+      const nominal = Number(parsed.nominal);
+
+      if (!Number.isFinite(nominal) || nominal <= 0) {
+        throw new Error(
+          "Nominal dari hasil parsing belum valid. Coba lengkapi teks input.",
+        );
+      }
+
+      const newRecord = {
+        id: createId(),
+        jenis: parsed.jenis === "piutang" ? "piutang" : "hutang",
+        pihak: String(parsed.pihak || "Pihak belum terdeteksi").trim(),
+        nominal,
+        jatuhTempo: toDateKey(parsed.jatuhTempo) || toDateKey(new Date()) || "",
+        catatan: String(parsed.catatan || "").trim(),
+        status: "belum_lunas",
+        metodeInput: source,
+        createdAt: new Date().toISOString(),
+      };
+
+      setRecords((previous) => sortByDueDate([newRecord, ...previous]));
+      setStatus("Data hutang/piutang berhasil diproses dan ditambahkan.");
+    } catch (error) {
+      setStatus(
+        toUserFriendlyError(
+          error?.message,
+          "Input belum bisa diproses. Coba lagi sebentar lagi.",
+        ),
+      );
+    } finally {
+      setInputLoading(false);
+    }
+  }
+
+  async function runOcr() {
+    if (!ocrFile) {
+      setStatus("Pilih file dokumen/foto terlebih dahulu.");
+      return;
+    }
+
+    setOcrLoading(true);
+    setStatus(
+      "Membaca teks dari dokumen (contoh: akta pengakuan hutang / surat perjanjian)...",
+    );
+
+    try {
+      const result = await Tesseract.recognize(ocrFile, "ind+eng");
+      const extractedText = String(result.data.text || "").trim();
+      setOcrText(extractedText);
+
+      if (!extractedText) {
+        setStatus("OCR selesai, tapi teks belum terbaca.");
+        return;
+      }
+
+      await processWithAi(extractedText, "ocr");
+    } catch (error) {
+      setStatus(
+        toUserFriendlyError(
+          error?.message,
+          "Dokumen belum bisa diproses. Coba foto/scan yang lebih jelas.",
+        ),
+      );
+    } finally {
+      setOcrLoading(false);
+    }
+  }
+
+  function startListening() {
+    if (typeof window === "undefined") return;
+
+    const SpeechRecognition =
+      window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+      setStatus("Web Speech API tidak didukung browser ini.");
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = "id-ID";
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    voiceFinalTextRef.current = "";
+    voiceStartedAtRef.current = Date.now();
+    stopRequestedRef.current = false;
+
+    recognition.onresult = (event) => {
+      let finalTranscript = "";
+
+      for (let i = event.resultIndex; i < event.results.length; i += 1) {
+        finalTranscript += event.results[i][0].transcript;
+      }
+
+      const cleanedTranscript = finalTranscript.trim();
+      voiceFinalTextRef.current = cleanedTranscript;
+      setVoiceText(cleanedTranscript);
+    };
+
+    recognition.onerror = (event) => {
+      const isNoSpeech = event.error === "no-speech";
+      setStatus(
+        isNoSpeech
+          ? "Suara belum terdengar. Coba bicara lebih jelas atau lebih dekat ke mikrofon."
+          : "Rekaman suara gagal diproses. Coba rekam ulang.",
+      );
+      setListening(false);
+    };
+
+    recognition.onend = async () => {
+      setListening(false);
+      const finalText = voiceFinalTextRef.current.trim();
+      const duration = Date.now() - voiceStartedAtRef.current;
+      const totalWords = finalText.split(/\s+/).filter(Boolean).length;
+
+      if (!finalText) {
+        setStatus("Belum ada suara yang terbaca. Coba rekam ulang.");
+        return;
+      }
+
+      if (
+        !stopRequestedRef.current &&
+        (duration < MIN_VOICE_DURATION_MS || totalWords < MIN_VOICE_WORDS)
+      ) {
+        setStatus(
+          "Rekaman terlalu singkat. Lanjutkan bicara lebih lengkap, lalu tekan Stop saat selesai.",
+        );
+        return;
+      }
+
+      await processWithAi(finalText, "voice");
+    };
+
+    recognitionRef.current = recognition;
+    recognition.start();
+    setListening(true);
+    setStatus(
+      "Sedang merekam... Ceritakan pihak, nominal, jatuh tempo, dan jenis hutang/piutang.",
+    );
+  }
+
+  function stopListening() {
+    stopRequestedRef.current = true;
+    recognitionRef.current?.stop();
   }
 
   function toggleLunas(recordId) {
@@ -448,10 +671,11 @@ export default function HutangPiutangPage() {
               <h2 className="text-3xl md:text-4xl font-semibold mt-2 leading-tight">
                 Halo, {ownerName}
               </h2>
-              <p className="text-zinc-300 mt-3 max-w-2xl">
-                Tambah catatan hutang/piutang, tandai lunas, dan aktifkan
-                pengingat jatuh tempo melalui notifikasi browser.
-              </p>
+               <p className="text-zinc-300 mt-3 max-w-2xl">
+                 Tambah catatan lewat input manual, OCR dokumen, atau suara;
+                 tandai lunas; dan aktifkan pengingat jatuh tempo via
+                 notifikasi browser.
+               </p>
 
               <div className="mt-5 flex flex-wrap gap-3">
                 <button
@@ -515,85 +739,198 @@ export default function HutangPiutangPage() {
                 <HandCoins size={18} />
                 <h3 className="font-semibold text-lg">Tambah Catatan</h3>
               </div>
-
-              <select
-                value={form.jenis}
-                onChange={(event) =>
-                  setForm((previous) => ({
-                    ...previous,
-                    jenis: event.target.value,
-                  }))
-                }
-                className="w-full px-4 py-3 rounded-2xl border border-zinc-200 bg-white outline-none"
-              >
-                <option value="hutang">Hutang</option>
-                <option value="piutang">Piutang</option>
-              </select>
-
-              <input
-                type="text"
-                value={form.pihak}
-                onChange={(event) =>
-                  setForm((previous) => ({
-                    ...previous,
-                    pihak: event.target.value,
-                  }))
-                }
-                placeholder="Nama pihak (contoh: Supplier Berkah)"
-                className="w-full px-4 py-3 rounded-2xl border border-zinc-200 outline-none"
-              />
-
-              <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 text-sm font-medium">
-                  Rp
-                </span>
-                <input
-                  type="number"
-                  min="0"
-                  value={form.nominal}
-                  onChange={(event) =>
-                    setForm((previous) => ({
-                      ...previous,
-                      nominal: event.target.value,
-                    }))
-                  }
-                  placeholder="0"
-                  className="w-full pl-12 pr-4 py-3 rounded-2xl border border-zinc-200 outline-none"
-                />
+              <div className="grid grid-cols-3 gap-2">
+                {METHODS.map((item) => (
+                  <button
+                    key={item.key}
+                    type="button"
+                    onClick={() => setMethod(item.key)}
+                    className={`px-3 py-2 rounded-xl border text-sm transition ${
+                      method === item.key
+                        ? "border-zinc-900 bg-zinc-900 text-white"
+                        : "border-zinc-200 hover:bg-zinc-100"
+                    }`}
+                  >
+                    {item.label}
+                  </button>
+                ))}
               </div>
 
-              <input
-                type="date"
-                value={form.jatuhTempo}
-                onChange={(event) =>
-                  setForm((previous) => ({
-                    ...previous,
-                    jatuhTempo: event.target.value,
-                  }))
-                }
-                className="w-full px-4 py-3 rounded-2xl border border-zinc-200 outline-none"
-              />
+              {method === "manual" && (
+                <div className="space-y-4">
+                  <select
+                    value={form.jenis}
+                    onChange={(event) =>
+                      setForm((previous) => ({
+                        ...previous,
+                        jenis: event.target.value,
+                      }))
+                    }
+                    className="w-full px-4 py-3 rounded-2xl border border-zinc-200 bg-white outline-none"
+                  >
+                    <option value="hutang">Hutang</option>
+                    <option value="piutang">Piutang</option>
+                  </select>
 
-              <textarea
-                rows={4}
-                value={form.catatan}
-                onChange={(event) =>
-                  setForm((previous) => ({
-                    ...previous,
-                    catatan: event.target.value,
-                  }))
-                }
-                placeholder="Catatan (opsional)"
-                className="w-full px-4 py-3 rounded-2xl border border-zinc-200 outline-none resize-none"
-              />
+                  <input
+                    type="text"
+                    value={form.pihak}
+                    onChange={(event) =>
+                      setForm((previous) => ({
+                        ...previous,
+                        pihak: event.target.value,
+                      }))
+                    }
+                    placeholder="Nama pihak (contoh: Supplier Berkah)"
+                    className="w-full px-4 py-3 rounded-2xl border border-zinc-200 outline-none"
+                  />
 
-              <button
-                type="submit"
-                className="w-full px-5 py-3 rounded-2xl bg-zinc-900 text-white hover:scale-[1.02] transition inline-flex justify-center items-center gap-2"
-              >
-                <PlusCircle size={18} />
-                Simpan Catatan
-              </button>
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 text-sm font-medium">
+                      Rp
+                    </span>
+                    <input
+                      type="number"
+                      min="0"
+                      value={form.nominal}
+                      onChange={(event) =>
+                        setForm((previous) => ({
+                          ...previous,
+                          nominal: event.target.value,
+                        }))
+                      }
+                      placeholder="0"
+                      className="w-full pl-12 pr-4 py-3 rounded-2xl border border-zinc-200 outline-none"
+                    />
+                  </div>
+
+                  <input
+                    type="date"
+                    value={form.jatuhTempo}
+                    onChange={(event) =>
+                      setForm((previous) => ({
+                        ...previous,
+                        jatuhTempo: event.target.value,
+                      }))
+                    }
+                    className="w-full px-4 py-3 rounded-2xl border border-zinc-200 outline-none"
+                  />
+
+                  <textarea
+                    rows={4}
+                    value={form.catatan}
+                    onChange={(event) =>
+                      setForm((previous) => ({
+                        ...previous,
+                        catatan: event.target.value,
+                      }))
+                    }
+                    placeholder="Catatan (opsional)"
+                    className="w-full px-4 py-3 rounded-2xl border border-zinc-200 outline-none resize-none"
+                  />
+
+                  <button
+                    type="submit"
+                    disabled={inputLoading}
+                    className="w-full px-5 py-3 rounded-2xl bg-zinc-900 text-white hover:scale-[1.02] transition inline-flex justify-center items-center gap-2 disabled:opacity-60"
+                  >
+                    <PlusCircle size={18} />
+                    Simpan Catatan
+                  </button>
+                </div>
+              )}
+
+              {method === "ocr" && (
+                <div className="space-y-4">
+                  <p className="text-sm text-zinc-600">
+                    Upload foto/scan dokumen seperti akta pengakuan hutang atau
+                    surat perjanjian hutang piutang.
+                  </p>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(event) =>
+                      setOcrFile(event.target.files?.[0] || null)
+                    }
+                    className="w-full px-4 py-3 rounded-2xl border border-zinc-200"
+                  />
+
+                  <button
+                    type="button"
+                    disabled={ocrLoading || inputLoading}
+                    onClick={runOcr}
+                    className="w-full px-5 py-3 rounded-2xl bg-zinc-900 text-white hover:scale-[1.02] transition inline-flex justify-center items-center gap-2 disabled:opacity-60"
+                  >
+                    {ocrLoading ? (
+                      <Loader2 size={18} className="animate-spin" />
+                    ) : (
+                      <ScanLine size={18} />
+                    )}
+                    Jalankan OCR & Simpan
+                  </button>
+
+                  <textarea
+                    rows={6}
+                    placeholder="Hasil OCR akan muncul di sini"
+                    value={ocrText}
+                    onChange={(event) => setOcrText(event.target.value)}
+                    className="w-full px-4 py-3 rounded-2xl border border-zinc-200 outline-none resize-none"
+                  />
+                </div>
+              )}
+
+              {method === "voice" && (
+                <div className="space-y-4">
+                  <p className="text-sm text-zinc-600">
+                    Ucapkan detail seperti jenis (hutang/piutang), pihak,
+                    nominal, jatuh tempo, dan catatan.
+                  </p>
+
+                  <div className="flex flex-wrap gap-3">
+                    <button
+                      type="button"
+                      onClick={startListening}
+                      disabled={listening || !speechSupported}
+                      className="px-5 py-3 rounded-2xl bg-zinc-900 text-white hover:scale-[1.02] transition inline-flex items-center gap-2 disabled:opacity-60"
+                    >
+                      <Mic size={18} />
+                      Mulai Rekam
+                    </button>
+                    <button
+                      type="button"
+                      onClick={stopListening}
+                      disabled={!listening}
+                      className="px-5 py-3 rounded-2xl border border-zinc-300 hover:bg-zinc-100 transition inline-flex items-center gap-2 disabled:opacity-60"
+                    >
+                      <Square size={18} />
+                      Stop
+                    </button>
+                  </div>
+
+                  {!speechSupported && (
+                    <p className="text-sm text-rose-600">
+                      Browser ini belum mendukung Web Speech API.
+                    </p>
+                  )}
+
+                  <textarea
+                    rows={6}
+                    placeholder='Contoh: "Saya punya piutang ke Toko Maju 2 juta jatuh tempo 20 Mei 2026 untuk pembayaran barang."'
+                    value={voiceText}
+                    onChange={(event) => setVoiceText(event.target.value)}
+                    className="w-full px-4 py-3 rounded-2xl border border-zinc-200 outline-none resize-none"
+                  />
+
+                  <button
+                    type="button"
+                    disabled={inputLoading}
+                    onClick={() => processWithAi(voiceText, "voice")}
+                    className="w-full px-5 py-3 rounded-2xl bg-zinc-900 text-white hover:scale-[1.02] transition inline-flex justify-center items-center gap-2 disabled:opacity-60"
+                  >
+                    Simpan dari Suara
+                  </button>
+                </div>
+              )}
             </motion.form>
 
             <motion.div

@@ -7,6 +7,7 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   HandCoins,
   LayoutDashboard,
+  Landmark,
   LogOut,
   Menu,
   PlusCircle,
@@ -39,6 +40,11 @@ export default function Header() {
       href: "/transaksi",
       icon: PlusCircle,
       label: "Transaksi",
+    },
+    {
+      href: "/aset",
+      icon: Landmark,
+      label: "Aset",
     },
   ];
 
