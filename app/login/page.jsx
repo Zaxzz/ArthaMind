@@ -6,7 +6,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Lock, Mail } from "lucide-react";
 import { supabase } from "../../utils/supabase";
-import AppShellHeader from "@/app/components/AppShellHeader";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 25 },
@@ -71,10 +70,8 @@ export default function LoginPage() {
 
   return (
     <main className="min-h-screen bg-white text-zinc-900 overflow-hidden">
-      <AppShellHeader currentPath="/login" />
-
       {/* CONTENT */}
-      <section className="min-h-screen flex items-center justify-center px-6 py-10 pt-28">
+      <section className="min-h-screen flex items-center justify-center px-6 py-10">
         <div className="w-full max-w-6xl grid lg:grid-cols-2 gap-10 items-center">
           {/* LEFT */}
           <motion.div
