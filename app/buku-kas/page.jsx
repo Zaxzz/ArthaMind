@@ -9,6 +9,7 @@ import {
   Filter,
   Save,
   Search,
+  Sparkles,
   Trash2,
   Wallet,
   X,
@@ -103,6 +104,8 @@ export default function BukuKasPage() {
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState("");
   const [transactions, setTransactions] = useState([]);
+  const [aiInsight, setAiInsight] = useState("Memuat insight AI...");
+  const [loadingInsight, setLoadingInsight] = useState(true);
   const [filters, setFilters] = useState({
     startDate: "",
     endDate: "",
@@ -160,9 +163,36 @@ export default function BukuKasPage() {
         if (!mounted) return;
 
         setTransactions(sortTransactionsByDateDesc(data || []));
+
+        fetch("/api/ai", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId: user.id,
+            mode: "page_insight",
+            context: "cashbook",
+          }),
+        })
+          .then((response) => response.json())
+          .then((result) => {
+            if (!mounted) return;
+            if (result?.success) {
+              setAiInsight(result.reply || "Insight AI belum tersedia.");
+            } else {
+              setAiInsight("Insight AI belum tersedia.");
+            }
+          })
+          .catch(() => {
+            if (!mounted) return;
+            setAiInsight("Insight AI belum tersedia.");
+          })
+          .finally(() => {
+            if (mounted) setLoadingInsight(false);
+          });
       } catch (loadError) {
         if (mounted) {
           setStatus(loadError.message || "Gagal memuat data buku kas.");
+          setLoadingInsight(false);
         }
       } finally {
         if (mounted) {
@@ -369,6 +399,21 @@ export default function BukuKasPage() {
               <p className="text-sm text-zinc-300">Jumlah Transaksi</p>
               <p className="text-2xl font-semibold mt-1">{summary.count}</p>
             </div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.03 }}
+            className="rounded-[32px] bg-zinc-900 text-white p-6 shadow-2xl"
+          >
+            <div className="flex items-center gap-2">
+              <Sparkles size={18} />
+              <h2 className="text-lg font-semibold">Insight AI Buku Kas</h2>
+            </div>
+            <p className="mt-3 text-zinc-300 leading-relaxed whitespace-pre-line">
+              {loadingInsight ? "Memuat insight AI..." : aiInsight}
+            </p>
           </motion.div>
 
           <motion.div

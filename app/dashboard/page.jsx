@@ -11,7 +11,7 @@ import {
   Bot,
   CalendarDays,
   HandCoins,
-  Landmark,
+  Sparkles,
   Wallet,
 } from "lucide-react";
 import {
@@ -51,6 +51,8 @@ export default function DashboardPage() {
   const [error, setError] = useState("");
   const [profileName, setProfileName] = useState("Pemilik Usaha");
   const [transactions, setTransactions] = useState([]);
+  const [aiInsight, setAiInsight] = useState("Memuat insight AI...");
+  const [loadingInsight, setLoadingInsight] = useState(true);
 
   useEffect(() => {
     let mounted = true;
@@ -88,9 +90,36 @@ export default function DashboardPage() {
         if (!mounted) return;
 
         setTransactions(sortTransactionsByDateDesc(data || []));
+
+        fetch("/api/ai", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId: user.id,
+            mode: "page_insight",
+            context: "dashboard",
+          }),
+        })
+          .then((response) => response.json())
+          .then((result) => {
+            if (!mounted) return;
+            if (result?.success) {
+              setAiInsight(result.reply || "Insight AI belum tersedia.");
+            } else {
+              setAiInsight("Insight AI belum tersedia.");
+            }
+          })
+          .catch(() => {
+            if (!mounted) return;
+            setAiInsight("Insight AI belum tersedia.");
+          })
+          .finally(() => {
+            if (mounted) setLoadingInsight(false);
+          });
       } catch (loadError) {
         if (mounted) {
           setError(loadError.message || "Gagal memuat dashboard.");
+          setLoadingInsight(false);
         }
       } finally {
         if (mounted) {
@@ -260,6 +289,23 @@ export default function DashboardPage() {
               </div>
             </motion.div>
           </motion.div>
+
+          {!error && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.04 }}
+              className="rounded-[32px] bg-zinc-900 text-white p-6 shadow-2xl"
+            >
+              <div className="flex items-center gap-2">
+                <Sparkles size={18} />
+                <h3 className="text-lg font-semibold">Insight AI</h3>
+              </div>
+              <p className="mt-3 text-zinc-300 leading-relaxed whitespace-pre-line">
+                {loadingInsight ? "Memuat insight AI..." : aiInsight}
+              </p>
+            </motion.div>
+          )}
 
           {loading ? (
             <div className="rounded-[32px] border border-zinc-200 bg-white p-8 shadow-xl text-zinc-500">
