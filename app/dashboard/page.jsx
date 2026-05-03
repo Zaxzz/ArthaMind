@@ -231,13 +231,6 @@ export default function DashboardPage() {
                   <FileText size={18} />
                   Laporan SAK EMKM
                 </Link>
-                <Link
-                  href="/aset"
-                  className="px-5 py-3 rounded-2xl bg-white/15 text-white border border-white/20 hover:bg-white/20 transition inline-flex items-center gap-2"
-                >
-                  <Landmark size={18} />
-                  Kelola Aset
-                </Link>
               </div>
             </motion.div>
 

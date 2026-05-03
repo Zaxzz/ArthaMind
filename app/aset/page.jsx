@@ -25,6 +25,22 @@ function calculateBookValue(asset) {
   );
 }
 
+async function ensureProfileId(user) {
+  const payload = {
+    id: user.id,
+    nama_pemilik: user.user_metadata?.nama_pemilik || null,
+  };
+
+  const { data, error } = await supabase
+    .from("profiles")
+    .upsert(payload, { onConflict: "id" })
+    .select("id")
+    .single();
+
+  if (error) throw error;
+  return data.id;
+}
+
 export default function AsetPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
@@ -59,29 +75,20 @@ export default function AsetPage() {
           return;
         }
 
-        const { data: profile, error: profileError } = await supabase
-          .from("profiles")
-          .select("id")
-          .eq("user_id", user.id)
-          .maybeSingle();
-
-        if (profileError) throw profileError;
-        if (!profile?.id) {
-          throw new Error("Profil pengguna belum ditemukan.");
-        }
+        const resolvedProfileId = await ensureProfileId(user);
 
         const { data, error: asetError } = await supabase
           .from("aset")
           .select(
             "id, user_id, nama_aset, kategori, nilai_perolehan, akumulasi_penyusutan, tanggal_perolehan",
           )
-          .eq("user_id", profile.id)
+          .eq("user_id", resolvedProfileId)
           .order("tanggal_perolehan", { ascending: false });
 
         if (asetError) throw asetError;
         if (!mounted) return;
 
-        setProfileId(profile.id);
+        setProfileId(resolvedProfileId);
         setRecords(data || []);
       } catch (error) {
         if (mounted) {

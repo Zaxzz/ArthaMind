@@ -52,10 +52,6 @@ function toDateKey(value) {
   return `${year}-${month}-${day}`;
 }
 
-function getStorageKey(userId) {
-  return `arthamind:hutang-piutang:${userId}`;
-}
-
 function getReminderKey(userId) {
   return `arthamind:hutang-piutang:reminder:${userId}`;
 }
@@ -91,14 +87,6 @@ function sortByDueDate(items = []) {
   });
 }
 
-function createId() {
-  if (typeof crypto !== "undefined" && crypto.randomUUID) {
-    return crypto.randomUUID();
-  }
-
-  return `hp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-}
-
 function toUserFriendlyError(message, fallbackMessage) {
   const text = String(message || "").toLowerCase();
 
@@ -117,6 +105,36 @@ function toUserFriendlyError(message, fallbackMessage) {
   return fallbackMessage;
 }
 
+async function ensureProfileId(user) {
+  const payload = {
+    id: user.id,
+    nama_pemilik: user.user_metadata?.nama_pemilik || null,
+  };
+
+  const { data, error } = await supabase
+    .from("profiles")
+    .upsert(payload, { onConflict: "id" })
+    .select("id")
+    .single();
+
+  if (error) throw error;
+  return data.id;
+}
+
+function mapDebtRowToRecord(row) {
+  return {
+    id: row.id,
+    jenis: row.tipe === "piutang" ? "piutang" : "hutang",
+    pihak: String(row.nama_pihak || "").trim(),
+    nominal: Number(row.jumlah || 0),
+    jatuhTempo: toDateKey(row.jatuh_tempo) || "",
+    catatan: String(row.deskripsi || row.catatan || "").trim(),
+    status: row.status === "lunas" ? "lunas" : "belum_lunas",
+    metodeInput: row.metode_input || row.metode || "manual",
+    createdAt: row.created_at || new Date().toISOString(),
+  };
+}
+
 export default function HutangPiutangPage() {
   const router = useRouter();
 
@@ -124,6 +142,7 @@ export default function HutangPiutangPage() {
   const [status, setStatus] = useState("");
   const [ownerName, setOwnerName] = useState("Pemilik Usaha");
   const [userId, setUserId] = useState("");
+  const [profileId, setProfileId] = useState("");
   const [records, setRecords] = useState([]);
   const [notificationPermission, setNotificationPermission] =
     useState("default");
@@ -186,19 +205,18 @@ export default function HutangPiutangPage() {
             "Pemilik Usaha",
         );
         setUserId(user.id);
+        const resolvedProfileId = await ensureProfileId(user);
+        setProfileId(resolvedProfileId);
 
-        const cachedRaw = window.localStorage.getItem(getStorageKey(user.id));
-        if (cachedRaw) {
-          const parsed = JSON.parse(cachedRaw);
+        const { data: debtRows, error: debtError } = await supabase
+          .from("hutang_piutang")
+          .select("id, user_id, tipe, nama_pihak, jumlah, jatuh_tempo, status, created_at")
+          .eq("user_id", resolvedProfileId);
 
-          if (!Array.isArray(parsed)) {
-            throw new Error("Data hutang & piutang tidak valid.");
-          }
+        if (debtError) throw debtError;
 
-          setRecords(sortByDueDate(parsed));
-        } else {
-          setRecords([]);
-        }
+        const normalizedRows = (debtRows || []).map(mapDebtRowToRecord);
+        setRecords(sortByDueDate(normalizedRows));
 
         if ("Notification" in window) {
           setNotificationPermission(Notification.permission);
@@ -222,21 +240,6 @@ export default function HutangPiutangPage() {
       mounted = false;
     };
   }, [router]);
-
-  useEffect(() => {
-    if (!userId) return;
-
-    try {
-      window.localStorage.setItem(
-        getStorageKey(userId),
-        JSON.stringify(records),
-      );
-    } catch (storageError) {
-      console.error(
-        storageError?.message || "Gagal menyimpan data lokal hutang/piutang.",
-      );
-    }
-  }, [records, userId]);
 
   const pushDueNotifications = useCallback(
     (entries) => {
@@ -403,9 +406,13 @@ export default function HutangPiutangPage() {
     setStatus("Izin notifikasi belum diberikan.");
   }
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault();
     if (method !== "manual") return;
+    if (!profileId) {
+      setStatus("Profil belum siap. Coba muat ulang halaman.");
+      return;
+    }
 
     const nominal = Number(form.nominal);
 
@@ -424,25 +431,47 @@ export default function HutangPiutangPage() {
       return;
     }
 
-    const newRecord = {
-      id: createId(),
-      jenis: form.jenis,
-      pihak: form.pihak.trim(),
-      nominal,
-      jatuhTempo: form.jatuhTempo,
-      catatan: form.catatan.trim(),
-      status: "belum_lunas",
-      createdAt: new Date().toISOString(),
-    };
+    setInputLoading(true);
+    setStatus("Menyimpan data hutang/piutang...");
 
-    setRecords((previous) => sortByDueDate([newRecord, ...previous]));
-    setForm((previous) => ({
-      ...previous,
-      pihak: "",
-      nominal: "",
-      catatan: "",
-    }));
-    setStatus("Data hutang/piutang berhasil ditambahkan.");
+    try {
+      const payload = {
+        user_id: profileId,
+        tipe: form.jenis,
+        nama_pihak: form.pihak.trim(),
+        jumlah: nominal,
+        jatuh_tempo: form.jatuhTempo,
+        status: "belum_lunas",
+      };
+
+      const { data, error } = await supabase
+        .from("hutang_piutang")
+        .insert(payload)
+        .select("id, user_id, tipe, nama_pihak, jumlah, jatuh_tempo, status, created_at")
+        .single();
+
+      if (error) throw error;
+
+      setRecords((previous) =>
+        sortByDueDate([mapDebtRowToRecord(data), ...previous]),
+      );
+      setForm((previous) => ({
+        ...previous,
+        pihak: "",
+        nominal: "",
+        catatan: "",
+      }));
+      setStatus("Data hutang/piutang berhasil ditambahkan.");
+    } catch (error) {
+      setStatus(
+        toUserFriendlyError(
+          error?.message,
+          "Data hutang/piutang belum bisa disimpan. Coba lagi sebentar lagi.",
+        ),
+      );
+    } finally {
+      setInputLoading(false);
+    }
   }
 
   async function processWithAi(rawText, source) {
@@ -481,19 +510,30 @@ export default function HutangPiutangPage() {
         );
       }
 
-      const newRecord = {
-        id: createId(),
-        jenis: parsed.jenis === "piutang" ? "piutang" : "hutang",
-        pihak: String(parsed.pihak || "Pihak belum terdeteksi").trim(),
-        nominal,
-        jatuhTempo: toDateKey(parsed.jatuhTempo) || toDateKey(new Date()) || "",
-        catatan: String(parsed.catatan || "").trim(),
+      if (!profileId) {
+        throw new Error("Profil belum siap. Coba muat ulang halaman.");
+      }
+
+      const payload = {
+        user_id: profileId,
+        tipe: parsed.jenis === "piutang" ? "piutang" : "hutang",
+        nama_pihak: String(parsed.pihak || "Pihak belum terdeteksi").trim(),
+        jumlah: nominal,
+        jatuh_tempo: toDateKey(parsed.jatuhTempo) || toDateKey(new Date()) || "",
         status: "belum_lunas",
-        metodeInput: source,
-        createdAt: new Date().toISOString(),
       };
 
-      setRecords((previous) => sortByDueDate([newRecord, ...previous]));
+      const { data, error: saveError } = await supabase
+        .from("hutang_piutang")
+        .insert(payload)
+        .select("id, user_id, tipe, nama_pihak, jumlah, jatuh_tempo, status, created_at")
+        .single();
+
+      if (saveError) throw saveError;
+
+      setRecords((previous) =>
+        sortByDueDate([mapDebtRowToRecord(data), ...previous]),
+      );
       setStatus("Data hutang/piutang berhasil diproses dan ditambahkan.");
     } catch (error) {
       setStatus(
@@ -619,36 +659,82 @@ export default function HutangPiutangPage() {
     recognitionRef.current?.stop();
   }
 
-  function toggleLunas(recordId) {
-    let nextStatus = "belum_lunas";
+  async function toggleLunas(recordId) {
+    if (!profileId) {
+      setStatus("Profil belum siap. Coba muat ulang halaman.");
+      return;
+    }
 
-    setRecords((previous) =>
-      sortByDueDate(
-        previous.map((record) => {
-          if (record.id !== recordId) return record;
+    const selected = records.find((record) => record.id === recordId);
+    if (!selected) return;
 
-          nextStatus = record.status === "lunas" ? "belum_lunas" : "lunas";
-          return {
-            ...record,
-            status: nextStatus,
-            updatedAt: new Date().toISOString(),
-          };
-        }),
-      ),
-    );
+    const nextStatus = selected.status === "lunas" ? "belum_lunas" : "lunas";
 
-    setStatus(
-      nextStatus === "lunas"
-        ? "Item berhasil ditandai lunas."
-        : "Status item dikembalikan ke belum lunas.",
-    );
+    try {
+      const { error } = await supabase
+        .from("hutang_piutang")
+        .update({ status: nextStatus })
+        .eq("id", recordId)
+        .eq("user_id", profileId);
+
+      if (error) throw error;
+
+      setRecords((previous) =>
+        sortByDueDate(
+          previous.map((record) =>
+            record.id === recordId
+              ? {
+                  ...record,
+                  status: nextStatus,
+                  updatedAt: new Date().toISOString(),
+                }
+              : record,
+          ),
+        ),
+      );
+
+      setStatus(
+        nextStatus === "lunas"
+          ? "Item berhasil ditandai lunas."
+          : "Status item dikembalikan ke belum lunas.",
+      );
+    } catch (error) {
+      setStatus(
+        toUserFriendlyError(
+          error?.message,
+          "Status item belum bisa diperbarui. Coba lagi sebentar lagi.",
+        ),
+      );
+    }
   }
 
-  function removeRecord(recordId) {
-    setRecords((previous) =>
-      previous.filter((record) => record.id !== recordId),
-    );
-    setStatus("Item hutang/piutang berhasil dihapus.");
+  async function removeRecord(recordId) {
+    if (!profileId) {
+      setStatus("Profil belum siap. Coba muat ulang halaman.");
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from("hutang_piutang")
+        .delete()
+        .eq("id", recordId)
+        .eq("user_id", profileId);
+
+      if (error) throw error;
+
+      setRecords((previous) =>
+        previous.filter((record) => record.id !== recordId),
+      );
+      setStatus("Item hutang/piutang berhasil dihapus.");
+    } catch (error) {
+      setStatus(
+        toUserFriendlyError(
+          error?.message,
+          "Item hutang/piutang belum bisa dihapus. Coba lagi sebentar lagi.",
+        ),
+      );
+    }
   }
 
   return (

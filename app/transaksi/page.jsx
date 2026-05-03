@@ -3,14 +3,9 @@
 import { useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
-import {
-  CheckCircle2,
-  Loader2,
-  Mic,
-  ScanLine,
-  Square,
-} from "lucide-react";
+import { CheckCircle2, Loader2, Mic, ScanLine, Square } from "lucide-react";
 import Tesseract from "tesseract.js";
+import { supabase } from "@/utils/supabase";
 import {
   TRANSACTION_CATEGORIES,
   getCategoriesByJenis,
@@ -126,7 +121,8 @@ export default function TransactionInputPage() {
 
   const [voiceText, setVoiceText] = useState("");
   const [listening, setListening] = useState(false);
-  const [pendingJenisConfirmation, setPendingJenisConfirmation] = useState(null);
+  const [pendingJenisConfirmation, setPendingJenisConfirmation] =
+    useState(null);
   const [selectedJenisConfirmation, setSelectedJenisConfirmation] =
     useState("pengeluaran");
   const [speechSupported] = useState(
@@ -147,6 +143,7 @@ export default function TransactionInputPage() {
 
   const handleManualSave = async () => {
     const nominal = Number(manualForm.jumlah);
+    console.log("saving manual transaction with data:", manualForm);
 
     if (!manualForm.kategori) {
       setStatus("Kategori wajib dipilih.");
@@ -187,6 +184,7 @@ export default function TransactionInputPage() {
         deskripsi: "",
       }));
     } catch (error) {
+      console.log(error);
       setStatus(
         toUserFriendlyError(
           error?.message,
@@ -234,7 +232,10 @@ export default function TransactionInputPage() {
 
       const result = await response.json();
 
-      if (response.status === 422 && result.code === "NEEDS_JENIS_CONFIRMATION") {
+      if (
+        response.status === 422 &&
+        result.code === "NEEDS_JENIS_CONFIRMATION"
+      ) {
         const suggestedJenis = result?.draft?.suggestedJenis || "pengeluaran";
         setPendingJenisConfirmation({
           rawText,
@@ -368,18 +369,15 @@ export default function TransactionInputPage() {
     recognitionRef.current = recognition;
     recognition.start();
     setListening(true);
-    setStatus("Sedang merekam... Ceritakan transaksi dengan lengkap lalu tekan Stop.");
+    setStatus(
+      "Sedang merekam... Ceritakan transaksi dengan lengkap lalu tekan Stop.",
+    );
   };
 
   const stopListening = () => {
     stopRequestedRef.current = true;
     recognitionRef.current?.stop();
   };
-
-  async function handleLogout() {
-    await supabase.auth.signOut();
-    router.replace("/login");
-  }
 
   return (
     <main className="min-h-screen bg-white text-zinc-900 overflow-hidden">
@@ -622,23 +620,21 @@ export default function TransactionInputPage() {
 
             {method === "voice" && (
               <div className="space-y-4">
-                <h2 className="text-2xl font-semibold">
-                  Input Suara 
-                </h2>
+                <h2 className="text-2xl font-semibold">Input Suara</h2>
 
                 <div className="flex flex-wrap items-center gap-3">
-                <button
-                  onClick={startListening}
-                  disabled={listening || !speechSupported}
+                  <button
+                    onClick={startListening}
+                    disabled={listening || !speechSupported}
                     className="px-6 py-3 rounded-2xl bg-zinc-900 text-white hover:scale-105 transition disabled:opacity-60 inline-flex items-center gap-2"
                   >
                     <Mic size={18} />
-                    Mulai Rekam 
+                    Mulai Rekam
                   </button>
 
-                <button
-                  onClick={stopListening}
-                  disabled={!listening}
+                  <button
+                    onClick={stopListening}
+                    disabled={!listening}
                     className="px-6 py-3 rounded-2xl border border-zinc-300 hover:bg-zinc-100 transition disabled:opacity-60 inline-flex items-center gap-2"
                   >
                     <Square size={18} />
