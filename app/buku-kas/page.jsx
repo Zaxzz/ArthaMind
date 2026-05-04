@@ -30,6 +30,7 @@ import {
 } from "@/utils/transactionUtils";
 import Header from "../../component/Header";
 import { supabase } from "../../utils/supabase";
+import ToastNotice from "@/app/components/ToastNotice";
 
 const COLUMN_ERROR_PATTERN =
   /column|schema cache|does not exist|Could not find the '.*' column/i;
@@ -134,6 +135,18 @@ export default function BukuKasPage() {
     ],
     [],
   );
+
+  useEffect(() => {
+    if (!status) return undefined;
+
+    const timeoutId = window.setTimeout(() => {
+      setStatus("");
+    }, 3500);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [status]);
 
   useEffect(() => {
     let mounted = true;
@@ -427,7 +440,7 @@ export default function BukuKasPage() {
               <h2 className="font-semibold text-lg">Filter Buku Kas</h2>
             </div>
 
-            <div className="grid md:grid-cols-2 xl:grid-cols-5 gap-3">
+            <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-3">
               <div className="relative xl:col-span-2">
                 <Search
                   size={16}
@@ -464,18 +477,6 @@ export default function BukuKasPage() {
                   className="w-full pl-9 pr-4 py-3 rounded-2xl border border-zinc-200 outline-none"
                 />
               </div>
-
-              <input
-                type="date"
-                value={filters.endDate}
-                onChange={(event) =>
-                  setFilters((previous) => ({
-                    ...previous,
-                    endDate: event.target.value,
-                  }))
-                }
-                className="w-full px-4 py-3 rounded-2xl border border-zinc-200 outline-none"
-              />
 
               <select
                 value={filters.kategori}
@@ -615,11 +616,7 @@ export default function BukuKasPage() {
             )}
           </motion.div>
 
-          {status && (
-            <div className="rounded-2xl border border-zinc-200 bg-zinc-100 text-zinc-700 p-4 text-sm">
-              {status}
-            </div>
-          )}
+          <ToastNotice message={status} />
         </div>
       </section>
 

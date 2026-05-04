@@ -18,6 +18,7 @@ import {
 import Tesseract from "tesseract.js";
 import { supabase } from "@/utils/supabase";
 import { formatRupiah } from "@/utils/transactionUtils";
+import ToastNotice from "@/app/components/ToastNotice";
 import Header from "../../component/Header";
 
 const fadeUp = {
@@ -178,6 +179,18 @@ export default function HutangPiutangPage() {
     keyword: "",
     tempo: "all",
   });
+
+  useEffect(() => {
+    if (!status) return undefined;
+
+    const timeoutId = window.setTimeout(() => {
+      setStatus("");
+    }, 3500);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [status]);
 
   useEffect(() => {
     let mounted = true;
@@ -481,7 +494,8 @@ export default function HutangPiutangPage() {
     }
 
     setInputLoading(true);
-    setStatus(`Memproses input ${source}...`);
+    const sourceLabel = source === "voice" ? "suara" : "dokumen";
+    setStatus(`Sedang memproses ${sourceLabel}...`);
 
     try {
       const response = await fetch("/api/hutang-piutang/process", {
@@ -564,7 +578,7 @@ export default function HutangPiutangPage() {
       setOcrText(extractedText);
 
       if (!extractedText) {
-        setStatus("OCR selesai, tapi teks belum terbaca.");
+        setStatus("Dokumen sudah dibaca, tetapi teks belum terbaca.");
         return;
       }
 
@@ -588,7 +602,7 @@ export default function HutangPiutangPage() {
       window.SpeechRecognition || window.webkitSpeechRecognition;
 
     if (!SpeechRecognition) {
-      setStatus("Web Speech API tidak didukung browser ini.");
+      setStatus("Fitur rekam suara belum didukung browser ini.");
       return;
     }
 
@@ -758,10 +772,10 @@ export default function HutangPiutangPage() {
                 Halo, {ownerName}
               </h2>
                <p className="text-zinc-300 mt-3 max-w-2xl">
-                 Tambah catatan lewat input manual, OCR dokumen, atau suara;
+                 Tambah catatan lewat input manual, foto dokumen, atau suara;
                  tandai lunas; dan aktifkan pengingat jatuh tempo via
                  notifikasi browser.
-               </p>
+                </p>
 
               <div className="mt-5 flex flex-wrap gap-3">
                 <button
@@ -952,12 +966,12 @@ export default function HutangPiutangPage() {
                     ) : (
                       <ScanLine size={18} />
                     )}
-                    Jalankan OCR & Simpan
+                    Baca Dokumen & Simpan
                   </button>
 
                   <textarea
                     rows={6}
-                    placeholder="Hasil OCR akan muncul di sini"
+                    placeholder="Hasil bacaan dokumen akan muncul di sini"
                     value={ocrText}
                     onChange={(event) => setOcrText(event.target.value)}
                     className="w-full px-4 py-3 rounded-2xl border border-zinc-200 outline-none resize-none"
@@ -995,7 +1009,7 @@ export default function HutangPiutangPage() {
 
                   {!speechSupported && (
                     <p className="text-sm text-rose-600">
-                      Browser ini belum mendukung Web Speech API.
+                      Fitur suara belum didukung di browser ini.
                     </p>
                   )}
 
@@ -1205,11 +1219,7 @@ export default function HutangPiutangPage() {
             </motion.div>
           </div>
 
-          {status ? (
-            <div className="rounded-2xl border border-zinc-200 bg-zinc-100 text-zinc-700 p-4 text-sm">
-              {status}
-            </div>
-          ) : null}
+          <ToastNotice message={status} />
         </div>
       </section>
     </main>

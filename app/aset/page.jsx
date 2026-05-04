@@ -7,6 +7,7 @@ import { Landmark, PlusCircle, Trash2 } from "lucide-react";
 import Header from "../../component/Header";
 import { supabase } from "@/utils/supabase";
 import { formatRupiah } from "@/utils/transactionUtils";
+import ToastNotice from "@/app/components/ToastNotice";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 25 },
@@ -55,6 +56,18 @@ export default function AsetPage() {
     akumulasiPenyusutan: "",
     tanggalPerolehan: new Date().toISOString().slice(0, 10),
   });
+
+  useEffect(() => {
+    if (!status) return undefined;
+
+    const timeoutId = window.setTimeout(() => {
+      setStatus("");
+    }, 3500);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [status]);
 
   useEffect(() => {
     let mounted = true;
@@ -425,11 +438,7 @@ export default function AsetPage() {
             </motion.div>
           </div>
 
-          {status ? (
-            <div className="rounded-2xl border border-zinc-200 bg-zinc-100 text-zinc-700 p-4 text-sm">
-              {status}
-            </div>
-          ) : null}
+          <ToastNotice message={status} />
         </div>
       </section>
     </main>
