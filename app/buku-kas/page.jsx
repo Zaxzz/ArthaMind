@@ -427,7 +427,7 @@ export default function BukuKasPage() {
               <h2 className="font-semibold text-lg">Filter Buku Kas</h2>
             </div>
 
-            <div className="grid md:grid-cols-2 xl:grid-cols-5 gap-3">
+            <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-3">
               <div className="relative xl:col-span-2">
                 <Search
                   size={16}
@@ -464,18 +464,6 @@ export default function BukuKasPage() {
                   className="w-full pl-9 pr-4 py-3 rounded-2xl border border-zinc-200 outline-none"
                 />
               </div>
-
-              <input
-                type="date"
-                value={filters.endDate}
-                onChange={(event) =>
-                  setFilters((previous) => ({
-                    ...previous,
-                    endDate: event.target.value,
-                  }))
-                }
-                className="w-full px-4 py-3 rounded-2xl border border-zinc-200 outline-none"
-              />
 
               <select
                 value={filters.kategori}

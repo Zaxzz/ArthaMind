@@ -226,7 +226,7 @@ export default function Page() {
     const doc = new jsPDF();
 
     doc.setFontSize(16);
-    doc.text("Laporan Keuangan SAK EMKM - ArthaMind", 14, 16);
+    doc.text("Laporan Keuangan SAK EMKM ", 14, 16);
     doc.setFontSize(11);
     doc.text(`Periode: ${report.periode}`, 14, 24);
 
