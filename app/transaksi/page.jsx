@@ -1,11 +1,12 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, Loader2, Mic, ScanLine, Square } from "lucide-react";
+import { Loader2, Mic, ScanLine, Square } from "lucide-react";
 import Tesseract from "tesseract.js";
 import { supabase } from "@/utils/supabase";
+import ToastNotice from "@/app/components/ToastNotice";
 import {
   TRANSACTION_CATEGORIES,
   getCategoriesByJenis,
@@ -136,6 +137,18 @@ export default function TransactionInputPage() {
   const voiceStartedAtRef = useRef(0);
   const stopRequestedRef = useRef(false);
 
+  useEffect(() => {
+    if (!status) return undefined;
+
+    const timeoutId = window.setTimeout(() => {
+      setStatus("");
+    }, 3500);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [status]);
+
   const manualCategoryOptions = useMemo(
     () => getCategoriesByJenis(manualForm.jenis),
     [manualForm.jenis],
@@ -206,7 +219,7 @@ export default function TransactionInputPage() {
     if (jenisOverride) {
       setPendingJenisConfirmation(null);
     }
-    setStatus(`Memproses ${source} via Grok dan menyimpan transaksi...`);
+    setStatus("Sedang memproses data transaksi...");
 
     try {
       const {
@@ -284,7 +297,7 @@ export default function TransactionInputPage() {
       setOcrText(extractedText);
 
       if (!extractedText) {
-        setStatus("OCR selesai, tapi teks tidak terbaca.");
+        setStatus("Foto sudah dibaca, tetapi teks belum terbaca.");
         return;
       }
 
@@ -308,7 +321,7 @@ export default function TransactionInputPage() {
       window.SpeechRecognition || window.webkitSpeechRecognition;
 
     if (!SpeechRecognition) {
-      setStatus("Web Speech API tidak didukung browser ini.");
+      setStatus("Fitur rekam suara belum didukung browser ini.");
       return;
     }
 
@@ -573,12 +586,12 @@ export default function TransactionInputPage() {
                   ) : (
                     <ScanLine size={18} />
                   )}
-                  Jalankan OCR & Simpan Otomatis
+                  Baca Foto & Simpan Otomatis
                 </button>
 
                 <textarea
                   rows={8}
-                  placeholder="Hasil OCR akan muncul di sini"
+                  placeholder="Hasil bacaan foto akan muncul di sini"
                   value={ocrText}
                   onChange={(e) => setOcrText(e.target.value)}
                   className="w-full px-4 py-3 rounded-2xl border border-zinc-200 outline-none resize-none"
@@ -644,7 +657,7 @@ export default function TransactionInputPage() {
 
                 {!speechSupported && (
                   <p className="text-sm text-red-500">
-                    Browser ini belum mendukung Web Speech API.
+                    Fitur suara belum didukung di browser ini.
                   </p>
                 )}
 
@@ -698,10 +711,7 @@ export default function TransactionInputPage() {
               </div>
             )}
 
-            <div className="mt-6 p-4 rounded-2xl bg-zinc-100 text-zinc-700 text-sm flex items-start gap-3">
-              <CheckCircle2 size={18} className="mt-0.5" />
-              <p>{status || "Siap menerima input transaksi."}</p>
-            </div>
+            <ToastNotice message={status} />
           </motion.div>
         </div>
       </section>
